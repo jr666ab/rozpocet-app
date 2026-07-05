@@ -32,6 +32,12 @@ window.DB = {
     if (window.Sync) Sync.naplanujPush();
   },
 
+  /* uložení po změně ceníků (materiál/práce/vzory) – ty se sdílí se všemi */
+  ulozSdilene(){
+    this.data.cenikyZmena = Date.now();
+    this.uloz();
+  },
+
   akce(id){ return this.data.akce.find(a => a.id === id); },
 
   novaAkce(nazev, adresa){

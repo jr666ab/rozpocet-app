@@ -62,7 +62,7 @@ function dbCenik(el, kolekce){
   if (smazVse) smazVse.onclick = () => {
     if (!confirm(`Opravdu smazat celý ceník (${seznamDat.length} položek)?`)) return;
     DB.data[kolekce] = [];
-    DB.uloz(); render();
+    DB.ulozSdilene(); render();
   };
 }
 
@@ -96,12 +96,12 @@ function cenikPolozkaModal(kolekce, p){
     };
     if (p) Object.assign(p, data);
     else DB.data[kolekce].push({ id: U.uid(), ...data });
-    DB.uloz(); U.zavriModal(ov); render();
+    DB.ulozSdilene(); U.zavriModal(ov); render();
   };
   const sm = ov.querySelector('#fSmazat');
   if (sm) sm.onclick = () => {
     DB.data[kolekce] = DB.data[kolekce].filter(i => i.id !== p.id);
-    DB.uloz(); U.zavriModal(ov); render();
+    DB.ulozSdilene(); U.zavriModal(ov); render();
   };
 }
 
@@ -150,7 +150,7 @@ function dbVzory(el){
       const nazev = ov.querySelector('#fNazev').value.trim();
       if (!nazev) { U.toast('Zadej název', 'chyba'); return; }
       DB.data.vzory.push({ id: U.uid(), nazev, popis: ov.querySelector('#fPopis').value.trim(), polozky: [] });
-      DB.uloz(); U.zavriModal(ov); render();
+      DB.ulozSdilene(); U.zavriModal(ov); render();
     };
   };
   el.querySelector('#vzImport').onclick = () => importModal('vzor');
@@ -173,14 +173,14 @@ function dbVzory(el){
         const nazev = ov.querySelector('#fNazev').value.trim();
         if (!nazev) { U.toast('Zadej název', 'chyba'); return; }
         v.nazev = nazev; v.popis = ov.querySelector('#fPopis').value.trim();
-        DB.uloz(); U.zavriModal(ov); render();
+        DB.ulozSdilene(); U.zavriModal(ov); render();
       };
     };
 
     det.querySelector('[data-akce="smazat"]').onclick = () => {
       if (!confirm(`Smazat vzor „${v.nazev}"?`)) return;
       DB.data.vzory = DB.data.vzory.filter(x => x.id !== v.id);
-      DB.uloz(); render();
+      DB.ulozSdilene(); render();
     };
   });
 }
@@ -215,12 +215,12 @@ function vzorPolozkaModal(vzor, p){
     };
     if (p) Object.assign(p, data);
     else vzor.polozky.push({ id: U.uid(), ...data });
-    DB.uloz(); U.zavriModal(ov); render();
+    DB.ulozSdilene(); U.zavriModal(ov); render();
   };
   const sm = ov.querySelector('#fSmazat');
   if (sm) sm.onclick = () => {
     vzor.polozky = vzor.polozky.filter(i => i.id !== p.id);
-    DB.uloz(); U.zavriModal(ov); render();
+    DB.ulozSdilene(); U.zavriModal(ov); render();
   };
 }
 
@@ -354,7 +354,7 @@ async function importModal(cil){
     } else {
       DB.data[cil].push(...nove);
     }
-    DB.uloz(); U.zavriModal(ov);
+    DB.ulozSdilene(); U.zavriModal(ov);
     U.toast(`Importováno ${nove.length} položek ✓`);
     render();
   };

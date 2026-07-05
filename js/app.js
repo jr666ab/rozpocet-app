@@ -40,7 +40,11 @@ function nastaveniModal(){
       <div class="pole"><label>Telefon</label><input id="nTel" value="${U.esc(n.telefon || '')}"></div>
       <div class="pole"><label>E-mail</label><input id="nEmail" value="${U.esc(n.email || '')}"></div>
     </div>
-    <div class="modal-akce"><button class="btn btn-plny" id="nUlozit">Uložit</button></div>`);
+    <div class="modal-akce"><button class="btn btn-plny" id="nUlozit">Uložit</button></div>
+    <div class="radek-sub" style="margin-top:12px">
+      Cloud: ${window.Sync && Sync.stav === 'zapnuto' ? '✅ záloha běží' : (window.FIREBASE_CONFIG ? '⏳ připojuji…' : '⚪ vypnutý (data jen v zařízení)')}
+      ${window.Sync && Sync.uid ? `<br>ID zařízení: <code style="user-select:all">${Sync.uid}</code>` : ''}
+    </div>`);
 
   ov.querySelector('#nUlozit').onclick = () => {
     Object.assign(DB.data.nastaveni, {

@@ -1,0 +1,18 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Osobní data: každé zařízení (anonymní uživatel) vidí jen svoje
+    match /uzivatele/{uid}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // Společné ceníky (materiál, práce, vzory): čtou všichni přihlášení.
+    // DOČASNĚ smí zapisovat každý přihlášený, aby šly ceníky poprvé nahrát.
+    // Až bude známé ID zařízení správce, nahradí se řádek za:
+    //   allow write: if request.auth != null && request.auth.uid in ['UID_SPRAVCE'];
+    match /sdilene/{doc} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+  }
+}
