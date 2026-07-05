@@ -1,0 +1,89 @@
+/* ===== Tisk / PDF nabídky =====
+   Návrh řešení: čistá tisková stránka + systémový dialog "Uložit jako PDF".
+   Výhoda: bezchybná čeština (žádné problémy s fonty), nulové závislosti.
+   Později jde vyměnit za pdf-lib s vloženým fontem, layout zůstane stejný. */
+
+function tiskniNabidku(akce){
+  const n = DB.data.nastaveni || {};
+  const s = nabidkaSoucty(akce);
+  const sazby = Object.keys(s.dph).map(Number).sort((a, b) => a - b);
+
+  const radky = akce.nabidka.map((p, i) => {
+    const celkem = U.num(p.mnozstvi) * U.num(p.jednotkovaCenaBezDph);
+    return `<tr>
+      <td class="c">${i + 1}</td>
+      <td>${U.esc(p.nazev)}</td>
+      <td class="r">${U.mn(p.mnozstvi)}</td>
+      <td class="c">${U.esc(p.jednotka || '')}</td>
+      <td class="r">${U.kc(p.jednotkovaCenaBezDph)}</td>
+      <td class="c">${U.num(p.sazbaDph)} %</td>
+      <td class="r">${U.kc(celkem)}</td>
+    </tr>`;
+  }).join('');
+
+  const rozpadDph = sazby.map(sz =>
+    `<tr><td>DPH ${sz} %</td><td class="r">${U.kc(s.dph[sz])}</td></tr>`
+  ).join('');
+
+  const html = `<!DOCTYPE html><html lang="cs"><head><meta charset="utf-8">
+<title>Nabídka – ${U.esc(akce.nazev)}</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#152523;padding:34px;font-size:13px}
+  h1{font-size:22px;color:#0b5d57;margin-bottom:2px}
+  .hlava{display:flex;justify-content:space-between;gap:20px;border-bottom:3px solid #0f766e;padding-bottom:14px;margin-bottom:18px}
+  .firma{text-align:right;font-size:12px;line-height:1.5}
+  .firma b{font-size:14px}
+  .info{margin-bottom:16px;line-height:1.6}
+  table{width:100%;border-collapse:collapse;margin-bottom:14px}
+  th{background:#e6f2f0;color:#0b5d57;font-size:11.5px;text-transform:uppercase;letter-spacing:.3px}
+  th,td{border:1px solid #cfe0dd;padding:6px 8px;text-align:left}
+  .r{text-align:right;white-space:nowrap} .c{text-align:center;white-space:nowrap}
+  .soucty{width:auto;margin-left:auto;min-width:280px}
+  .soucty td{border:none;padding:4px 8px;font-size:13.5px}
+  .soucty tr.celkem td{border-top:2px solid #0f766e;font-weight:700;font-size:15px;padding-top:8px}
+  .pata{margin-top:28px;font-size:11.5px;color:#6b7c78}
+  @media print{ body{padding:10mm} }
+</style></head><body>
+  <div class="hlava">
+    <div>
+      <h1>Cenová nabídka</h1>
+      <div class="info">
+        <b>${U.esc(akce.nazev)}</b><br>
+        ${akce.adresa ? U.esc(akce.adresa) + '<br>' : ''}
+        Datum: ${U.fmtDatum(U.dnes())}
+      </div>
+    </div>
+    <div class="firma">
+      ${n.firma ? `<b>${U.esc(n.firma)}</b><br>` : ''}
+      ${n.adresa ? U.esc(n.adresa) + '<br>' : ''}
+      ${n.ico ? 'IČO: ' + U.esc(n.ico) + '<br>' : ''}
+      ${n.dic ? 'DIČ: ' + U.esc(n.dic) + '<br>' : ''}
+      ${n.telefon ? 'Tel: ' + U.esc(n.telefon) + '<br>' : ''}
+      ${n.email ? U.esc(n.email) : ''}
+    </div>
+  </div>
+
+  <table>
+    <thead><tr>
+      <th class="c">#</th><th>Položka</th><th class="r">Množství</th><th class="c">MJ</th>
+      <th class="r">Cena/MJ</th><th class="c">DPH</th><th class="r">Celkem bez DPH</th>
+    </tr></thead>
+    <tbody>${radky || '<tr><td colspan="7" style="text-align:center;color:#999">Žádné položky</td></tr>'}</tbody>
+  </table>
+
+  <table class="soucty">
+    <tr><td>Celkem bez DPH</td><td class="r">${U.kc(s.bez)}</td></tr>
+    ${rozpadDph}
+    <tr class="celkem"><td>Celkem s DPH</td><td class="r">${U.kc(s.s)}</td></tr>
+  </table>
+
+  <div class="pata">Nabídka vystavena v aplikaci Rozpočty staveb.</div>
+  <script>window.onload = () => setTimeout(() => window.print(), 300);<\/script>
+</body></html>`;
+
+  const w = window.open('', '_blank');
+  if (!w) { U.toast('Prohlížeč zablokoval nové okno – povol vyskakovací okna', 'chyba'); return; }
+  w.document.write(html);
+  w.document.close();
+}

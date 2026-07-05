@@ -1,0 +1,13 @@
+{
+  "name": "Rozpočty staveb",
+  "short_name": "Rozpočty",
+  "description": "Nabídky, skutečná útrata, sklad, stavební deník",
+  "lang": "cs",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#f0f4f3",
+  "theme_color": "#0f766e",
+  "icons": [
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

@@ -1,0 +1,266 @@
+/* ===== Rozpočty staveb – vlastní vzhled ===== */
+:root{
+  --pozadi:#f0f4f3;
+  --karta:#ffffff;
+  --inkoust:#152523;
+  --slaby:#6b7c78;
+  --akcent:#0f766e;
+  --akcent-tmavy:#0b5d57;
+  --akcent-svetly:#e6f2f0;
+  --linka:#dde7e5;
+  --cervena:#dc2626;
+  --zelena:#16a34a;
+  --oranzova:#d97706;
+  --modra:#2563eb;
+  --radius:14px;
+  --stin:0 1px 3px rgba(21,37,35,.08), 0 4px 14px rgba(21,37,35,.05);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  background:var(--pozadi);color:var(--inkoust);
+  padding-bottom:calc(72px + env(safe-area-inset-bottom));
+}
+button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
+input,select,textarea{font:inherit;color:inherit}
+.skryt{visibility:hidden}
+
+/* ---- horní lišta ---- */
+.topbar{
+  position:sticky;top:0;z-index:50;
+  display:flex;align-items:center;gap:8px;
+  background:linear-gradient(135deg,var(--akcent-tmavy),var(--akcent));
+  color:#fff;padding:calc(10px + env(safe-area-inset-top)) 12px 10px;
+  box-shadow:0 2px 8px rgba(11,93,87,.25);
+}
+.topbar h1{flex:1;font-size:18px;font-weight:700;text-align:center;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.icon-btn{
+  width:38px;height:38px;border-radius:10px;font-size:18px;
+  display:flex;align-items:center;justify-content:center;flex:none;
+}
+.topbar .icon-btn:active{background:rgba(255,255,255,.18)}
+
+/* ---- spodní navigace ---- */
+.bottomnav{
+  position:fixed;left:0;right:0;bottom:0;z-index:50;
+  display:flex;background:var(--karta);
+  border-top:1px solid var(--linka);
+  padding-bottom:env(safe-area-inset-bottom);
+}
+.bottomnav button{
+  flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;
+  padding:8px 0 6px;font-size:11px;color:var(--slaby);font-weight:600;
+}
+.bottomnav button.aktivni{color:var(--akcent)}
+.nav-ikona{font-size:20px;line-height:1}
+
+/* ---- obsah ---- */
+#view{max-width:760px;margin:0 auto;padding:14px 12px}
+
+.karta{
+  background:var(--karta);border-radius:var(--radius);
+  box-shadow:var(--stin);padding:14px;margin-bottom:10px;
+}
+.prazdno{
+  text-align:center;color:var(--slaby);padding:40px 16px;font-size:15px;
+}
+.sekce-nadpis{
+  font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;
+  color:var(--slaby);margin:18px 4px 8px;
+}
+.sekce-nadpis:first-child{margin-top:4px}
+
+/* ---- tlačítka ---- */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  border-radius:11px;padding:10px 14px;font-weight:600;font-size:14px;
+  background:var(--akcent-svetly);color:var(--akcent-tmavy);
+}
+.btn:active{transform:scale(.97)}
+.btn-plny{background:var(--akcent);color:#fff}
+.btn-velky{width:100%;padding:13px;font-size:15px;margin-bottom:12px}
+.btn-obrys{background:transparent;border:1.5px solid var(--linka);color:var(--inkoust)}
+.btn-cerveny{background:#fdecec;color:var(--cervena)}
+.btn-zeleny{background:#e9f7ee;color:var(--zelena)}
+.btn-mini{padding:6px 10px;font-size:13px;border-radius:9px}
+.btn-rada{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+.btn-rada .btn{flex:1;min-width:110px}
+
+/* ---- řádky položek ---- */
+.radek{
+  display:flex;align-items:center;gap:10px;
+  background:var(--karta);border-radius:var(--radius);
+  box-shadow:var(--stin);padding:11px 13px;margin-bottom:8px;
+}
+.radek-info{flex:1;min-width:0}
+.radek-nazev{font-weight:600;font-size:14.5px;word-break:break-word}
+.radek-sub{font-size:12.5px;color:var(--slaby);margin-top:2px}
+.radek-cena{font-weight:700;font-size:14.5px;white-space:nowrap;text-align:right}
+.stitek{
+  display:inline-block;font-size:10.5px;font-weight:700;
+  background:var(--akcent-svetly);color:var(--akcent-tmavy);
+  border-radius:6px;padding:1px 6px;vertical-align:middle;margin-left:4px;
+}
+
+/* ---- badge stavů ---- */
+.badge{
+  display:inline-block;font-size:11.5px;font-weight:700;
+  border-radius:999px;padding:3px 10px;
+}
+.badge-nabidka{background:#eef1f0;color:var(--slaby)}
+.badge-prijato{background:#e9f7ee;color:var(--zelena)}
+.badge-odmitnuto{background:#fdecec;color:var(--cervena)}
+.badge-hotovo{background:#e8effd;color:var(--modra)}
+
+/* ---- akce karta na úvodu ---- */
+.akce-karta{display:flex;align-items:center;gap:10px;cursor:pointer}
+.akce-nazev{font-weight:700;font-size:15.5px}
+.akce-karta-vpravo{text-align:right;flex:none}
+.akce-cena{font-weight:700;font-size:14px;margin-top:4px}
+
+/* ---- hlavička detailu akce ---- */
+.akce-hlava{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.akce-hlava>div{flex:1;min-width:0}
+.akce-adresa{font-size:13px;color:var(--slaby);margin-bottom:4px;word-break:break-word}
+.akce-hlava .icon-btn{background:var(--karta);box-shadow:var(--stin);color:var(--inkoust)}
+
+/* ---- záložky ---- */
+.taby{
+  display:flex;gap:4px;background:var(--karta);border-radius:12px;
+  padding:4px;box-shadow:var(--stin);margin-bottom:12px;
+  overflow-x:auto;scrollbar-width:none;
+}
+.taby::-webkit-scrollbar{display:none}
+.tab{
+  flex:1;padding:8px 10px;border-radius:9px;font-size:13px;font-weight:600;
+  color:var(--slaby);white-space:nowrap;
+}
+.tab.aktivni{background:var(--akcent);color:#fff}
+
+/* ---- souhrny ---- */
+.souhrn{display:flex;flex-direction:column;gap:6px}
+.souhrn-radek{display:flex;justify-content:space-between;font-size:14px}
+.souhrn-radek b{font-size:15px}
+.souhrn-radek.velky{font-size:16px;font-weight:700;border-top:1px solid var(--linka);padding-top:8px;margin-top:4px}
+.plus{color:var(--zelena)} .minus{color:var(--cervena)}
+
+/* ---- formuláře ---- */
+.pole{margin-bottom:12px}
+.pole label{display:block;font-size:12.5px;font-weight:600;color:var(--slaby);margin-bottom:4px}
+.pole input,.pole select,.pole textarea{
+  width:100%;border:1.5px solid var(--linka);border-radius:10px;
+  padding:10px 12px;font-size:15px;background:#fff;
+}
+.pole input:focus,.pole select:focus,.pole textarea:focus{outline:none;border-color:var(--akcent)}
+.pole-rada{display:flex;gap:10px}
+.pole-rada .pole{flex:1}
+
+/* ---- modály ---- */
+.modal-pozadi{
+  position:fixed;inset:0;z-index:100;background:rgba(15,30,28,.45);
+  display:flex;align-items:flex-end;justify-content:center;
+  opacity:0;transition:opacity .18s;
+}
+.modal-pozadi.videt{opacity:1}
+.modal{
+  background:var(--karta);border-radius:18px 18px 0 0;
+  width:100%;max-width:600px;max-height:88vh;overflow-y:auto;
+  padding:18px 16px calc(18px + env(safe-area-inset-bottom));
+  transform:translateY(30px);transition:transform .18s;
+}
+.modal-pozadi.videt .modal{transform:none}
+@media(min-width:640px){
+  .modal-pozadi{align-items:center;padding:20px}
+  .modal{border-radius:18px}
+}
+.modal h2{font-size:17px;margin-bottom:14px}
+.modal-akce{display:flex;gap:8px;margin-top:16px}
+.modal-akce .btn{flex:1}
+.modal-seznam .radek{box-shadow:none;border:1px solid var(--linka);cursor:pointer}
+
+/* ---- toast ---- */
+#toasty{position:fixed;left:0;right:0;bottom:84px;z-index:200;
+  display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none}
+.toast{
+  background:#1f3532;color:#fff;font-size:13.5px;font-weight:600;
+  border-radius:999px;padding:9px 18px;max-width:88%;
+  opacity:0;transform:translateY(8px);transition:all .25s;
+}
+.toast.videt{opacity:1;transform:none}
+.toast-chyba{background:var(--cervena)}
+
+/* ---- realita / nákupy ---- */
+.nakup-pole{display:flex;gap:8px;margin-top:10px}
+.nakup-pole label{flex:1;font-size:11.5px;font-weight:600;color:var(--slaby)}
+.nakup-pole input{
+  width:100%;margin-top:3px;border:1.5px solid var(--linka);border-radius:9px;
+  padding:8px;font-size:14.5px;text-align:right;background:#fff;
+}
+.nakup-pole input:focus{outline:none;border-color:var(--akcent)}
+.nakup-hlava{display:flex;align-items:flex-start;gap:8px}
+.nakup-hlava b{flex:1;font-size:14.5px}
+.nakup-zbytek{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+  margin-top:10px;font-size:13px;color:var(--slaby);min-height:24px;
+}
+.zbytek-plus{color:var(--oranzova);font-weight:700}
+.zbytek-minus{color:var(--cervena);font-weight:700}
+.zbytek-ok{color:var(--zelena);font-weight:600}
+
+/* ---- deník ---- */
+.denik-hlava{display:flex;align-items:center;gap:6px;margin-bottom:8px}
+.denik-hlava b{flex:1;font-size:15px}
+.denik-hlava .icon-btn{background:var(--akcent-svetly);color:var(--akcent-tmavy);width:34px;height:34px;border-radius:9px;font-size:16px}
+.denik-hlava .icon-btn.nahravam{background:var(--cervena);color:#fff;animation:pulz 1.2s infinite}
+@keyframes pulz{50%{opacity:.6}}
+.denik-den textarea{
+  width:100%;min-height:88px;border:1.5px solid var(--linka);border-radius:10px;
+  padding:10px;font-size:14.5px;resize:vertical;background:#fff;
+}
+.denik-den textarea:focus{outline:none;border-color:var(--akcent)}
+.denik-fotky{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.denik-fotky img,.foto-mini{
+  width:64px;height:64px;object-fit:cover;border-radius:9px;cursor:pointer;
+  border:1px solid var(--linka);
+}
+
+/* ---- galerie ---- */
+.galerie-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:6px}
+.galerie-grid .foto{position:relative;aspect-ratio:1;cursor:pointer}
+.galerie-grid img{width:100%;height:100%;object-fit:cover;border-radius:10px}
+.foto-badge{
+  position:absolute;left:4px;bottom:4px;font-size:9.5px;font-weight:700;
+  background:rgba(0,0,0,.55);color:#fff;border-radius:5px;padding:1px 5px;
+}
+.lightbox img{width:100%;border-radius:12px;max-height:70vh;object-fit:contain;background:#111}
+
+/* ---- statistiky ---- */
+.stat-mrizka{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.stat-karta{background:var(--karta);border-radius:var(--radius);box-shadow:var(--stin);padding:13px;text-align:center}
+.stat-cislo{font-size:21px;font-weight:800;color:var(--akcent-tmavy)}
+.stat-popis{font-size:11.5px;color:var(--slaby);font-weight:600;margin-top:2px}
+
+/* ---- import / tabulka náhledu ---- */
+.nahled-tab{width:100%;border-collapse:collapse;font-size:12px;margin:8px 0}
+.nahled-tab th,.nahled-tab td{border:1px solid var(--linka);padding:4px 6px;text-align:left;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nahled-tab th{background:var(--akcent-svetly)}
+.nahled-obal{overflow-x:auto;margin:8px -4px}
+
+/* ---- vzory ---- */
+details.vzor{background:var(--karta);border-radius:var(--radius);box-shadow:var(--stin);margin-bottom:8px;overflow:hidden}
+details.vzor summary{
+  display:flex;align-items:center;gap:8px;list-style:none;cursor:pointer;
+  padding:12px 14px;font-weight:600;font-size:14.5px;
+}
+details.vzor summary::-webkit-details-marker{display:none}
+details.vzor .vzor-obsah{padding:0 14px 12px;border-top:1px solid var(--linka)}
+details.vzor .radek{box-shadow:none;border:1px solid var(--linka);padding:8px 11px}
+
+/* ---- hledání ---- */
+.hledani{
+  width:100%;border:1.5px solid var(--linka);border-radius:11px;
+  padding:10px 13px;font-size:14.5px;margin-bottom:10px;background:#fff;
+}
+.hledani:focus{outline:none;border-color:var(--akcent)}

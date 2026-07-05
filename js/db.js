@@ -1,0 +1,109 @@
+/* ===== Datová vrstva =====
+   Strukturovaná data: localStorage (JSON)
+   Fotky: IndexedDB (blob)
+   Pozn.: připraveno tak, aby šlo později vyměnit za Firebase (stejná struktura jako spec). */
+
+window.DB = {
+  KEY: 'rozpocet_v1',
+  data: null,
+
+  init(){
+    try { this.data = JSON.parse(localStorage.getItem(this.KEY)); } catch (e) { this.data = null; }
+    if (!this.data || typeof this.data !== 'object') this.data = {};
+    const d = this.data;
+    d.akce     = Array.isArray(d.akce)     ? d.akce     : [];
+    d.sklad    = Array.isArray(d.sklad)    ? d.sklad    : [];
+    d.polozky  = Array.isArray(d.polozky)  ? d.polozky  : [];   // ceník materiálu
+    d.prace    = Array.isArray(d.prace)    ? d.prace    : [];   // ceník prací
+    d.vzory    = Array.isArray(d.vzory)    ? d.vzory    : [];
+    d.nastaveni = d.nastaveni && typeof d.nastaveni === 'object' ? d.nastaveni : {};
+    for (const a of d.akce) {
+      a.nabidka   = Array.isArray(a.nabidka)   ? a.nabidka   : [];
+      a.realita   = Array.isArray(a.realita)   ? a.realita   : [];
+      a.vicePrace = Array.isArray(a.vicePrace) ? a.vicePrace : [];
+      a.denik     = Array.isArray(a.denik)     ? a.denik     : [];
+    }
+  },
+
+  uloz(){
+    this.data.lastZmena = Date.now();
+    try { localStorage.setItem(this.KEY, JSON.stringify(this.data)); }
+    catch (e) { U.toast('Data se nepodařilo uložit – plné úložiště?', 'chyba'); }
+    if (window.Sync) Sync.naplanujPush();
+  },
+
+  akce(id){ return this.data.akce.find(a => a.id === id); },
+
+  novaAkce(nazev, adresa){
+    const a = {
+      id: U.uid(), nazev, adresa: adresa || '',
+      datumZalozeni: U.dnes(), status: 'nabidka',
+      nabidka: [], realita: [], vicePrace: [], denik: []
+    };
+    this.data.akce.unshift(a);
+    this.uloz();
+    return a;
+  },
+
+  smazAkci(id){
+    this.data.akce = this.data.akce.filter(a => a.id !== id);
+    this.uloz();
+  }
+};
+
+/* ===== Fotky v IndexedDB =====
+   záznam: { id, akceId, datum (YYYY-MM-DD), zdroj ('denik'|'faktura'|'galerie'), nazev, blob } */
+window.FotoDB = {
+  _db: null,
+
+  open(){
+    return new Promise((res, rej) => {
+      if (this._db) return res(this._db);
+      const r = indexedDB.open('rozpocet-fotky', 1);
+      r.onupgradeneeded = e => {
+        const d = e.target.result;
+        if (!d.objectStoreNames.contains('fotky')) {
+          const st = d.createObjectStore('fotky', { keyPath: 'id' });
+          st.createIndex('akceId', 'akceId', { unique: false });
+        }
+      };
+      r.onsuccess = () => { this._db = r.result; res(this._db); };
+      r.onerror = () => rej(r.error);
+    });
+  },
+
+  async pridej(foto){
+    const db = await this.open();
+    return new Promise((res, rej) => {
+      const tx = db.transaction('fotky', 'readwrite');
+      tx.objectStore('fotky').put(foto);
+      tx.oncomplete = () => res(foto);
+      tx.onerror = () => rej(tx.error);
+    });
+  },
+
+  async proAkci(akceId){
+    const db = await this.open();
+    return new Promise((res, rej) => {
+      const tx = db.transaction('fotky', 'readonly');
+      const rq = tx.objectStore('fotky').index('akceId').getAll(akceId);
+      rq.onsuccess = () => res(rq.result || []);
+      rq.onerror = () => rej(rq.error);
+    });
+  },
+
+  async smaz(id){
+    const db = await this.open();
+    return new Promise((res, rej) => {
+      const tx = db.transaction('fotky', 'readwrite');
+      tx.objectStore('fotky').delete(id);
+      tx.oncomplete = () => res();
+      tx.onerror = () => rej(tx.error);
+    });
+  },
+
+  async smazProAkci(akceId){
+    const fotky = await this.proAkci(akceId);
+    for (const f of fotky) await this.smaz(f.id);
+  }
+};
