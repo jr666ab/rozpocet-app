@@ -42,6 +42,12 @@ window.U = {
     ov.className = 'modal-pozadi';
     ov.innerHTML = `<div class="modal">${html}</div>`;
     ov.addEventListener('click', e => { if (e.target === ov) U.zavriModal(ov); });
+    // iPhone: když vyjede klávesnice, posunout psané pole do viditelné části
+    ov.addEventListener('focusin', e => {
+      if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) {
+        setTimeout(() => e.target.scrollIntoView({ block: 'center', behavior: 'smooth' }), 300);
+      }
+    });
     document.getElementById('modaly').appendChild(ov);
     requestAnimationFrame(() => ov.classList.add('videt'));
     return ov;
@@ -100,5 +106,22 @@ window.U = {
   debounce(fn, ms){
     let t;
     return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+  },
+
+  /* pořadí okruhů ceníku podle postupu stavby (ostatní abecedně na konec) */
+  KATEGORIE_PORADI: [
+    'Bourací a přípravné práce', 'Zemnění a přípojka', 'Krabice a úložný materiál',
+    'Lišty a kanály', 'Trubky a chráničky', 'Kabely a vodiče', 'Kabeláž',
+    'Rozvaděče a elektroměry', 'Rozvaděč', 'Jističe a přístroje',
+    'Spínače a zásuvky', 'Kompletace – zásuvky a spínače', 'Svítidla a topení',
+    'Svítidla a spotřebiče', 'Hrubá instalace', 'Montážní práce (Windisch)',
+    'Materiál ostatní (Windisch)', 'Demontáže', 'Hromosvod a uzemnění (LPS)', 'Hromosvod',
+    'Domovní telefony / videotelefony', 'Revize a dokumentace', 'Doprava a ostatní', 'Ostatní'
+  ],
+  seradKategorie(nazvy){
+    return nazvy.sort((a, b) => {
+      const ia = U.KATEGORIE_PORADI.indexOf(a), ib = U.KATEGORIE_PORADI.indexOf(b);
+      return (ia < 0 ? 900 : ia) - (ib < 0 ? 900 : ib) || a.localeCompare(b, 'cs');
+    });
   }
 };

@@ -16,12 +16,14 @@
   --stin:0 1px 3px rgba(21,37,35,.08), 0 4px 14px rgba(21,37,35,.05);
 }
 *{box-sizing:border-box;margin:0;padding:0}
-html{-webkit-text-size-adjust:100%}
+html{-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent}
 body{
   font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
   background:var(--pozadi);color:var(--inkoust);
   padding-bottom:calc(72px + env(safe-area-inset-bottom));
+  touch-action:manipulation;  /* žádný zoom dvojitým ťuknutím na iPhone */
 }
+button,input,select,textarea,.radek,.tab{touch-action:manipulation}
 button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 input,select,textarea{font:inherit;color:inherit}
 .skryt{visibility:hidden}
@@ -151,7 +153,7 @@ input,select,textarea{font:inherit;color:inherit}
 .pole label{display:block;font-size:12.5px;font-weight:600;color:var(--slaby);margin-bottom:4px}
 .pole input,.pole select,.pole textarea{
   width:100%;border:1.5px solid var(--linka);border-radius:10px;
-  padding:10px 12px;font-size:15px;background:#fff;
+  padding:10px 12px;font-size:16px;background:#fff;  /* min 16px, jinak iPhone zoomuje */
 }
 .pole input:focus,.pole select:focus,.pole textarea:focus{outline:none;border-color:var(--akcent)}
 .pole-rada{display:flex;gap:10px}
@@ -166,9 +168,10 @@ input,select,textarea{font:inherit;color:inherit}
 .modal-pozadi.videt{opacity:1}
 .modal{
   background:var(--karta);border-radius:18px 18px 0 0;
-  width:100%;max-width:600px;max-height:88vh;overflow-y:auto;
+  width:100%;max-width:600px;max-height:88vh;max-height:85dvh;overflow-y:auto;
   padding:18px 16px calc(18px + env(safe-area-inset-bottom));
   transform:translateY(30px);transition:transform .18s;
+  overscroll-behavior:contain;
 }
 .modal-pozadi.videt .modal{transform:none}
 @media(min-width:640px){
@@ -196,7 +199,7 @@ input,select,textarea{font:inherit;color:inherit}
 .nakup-pole label{flex:1;font-size:11.5px;font-weight:600;color:var(--slaby)}
 .nakup-pole input{
   width:100%;margin-top:3px;border:1.5px solid var(--linka);border-radius:9px;
-  padding:8px;font-size:14.5px;text-align:right;background:#fff;
+  padding:8px;font-size:16px;text-align:right;background:#fff;
 }
 .nakup-pole input:focus{outline:none;border-color:var(--akcent)}
 .nakup-hlava{display:flex;align-items:flex-start;gap:8px}
@@ -217,7 +220,7 @@ input,select,textarea{font:inherit;color:inherit}
 @keyframes pulz{50%{opacity:.6}}
 .denik-den textarea{
   width:100%;min-height:88px;border:1.5px solid var(--linka);border-radius:10px;
-  padding:10px;font-size:14.5px;resize:vertical;background:#fff;
+  padding:10px;font-size:16px;resize:vertical;background:#fff;
 }
 .denik-den textarea:focus{outline:none;border-color:var(--akcent)}
 .denik-fotky{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
@@ -261,6 +264,6 @@ details.vzor .radek{box-shadow:none;border:1px solid var(--linka);padding:8px 11
 /* ---- hledání ---- */
 .hledani{
   width:100%;border:1.5px solid var(--linka);border-radius:11px;
-  padding:10px 13px;font-size:14.5px;margin-bottom:10px;background:#fff;
+  padding:10px 13px;font-size:16px;margin-bottom:10px;background:#fff;
 }
 .hledani:focus{outline:none;border-color:var(--akcent)}

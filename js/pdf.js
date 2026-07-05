@@ -124,11 +124,13 @@ function tiskniCenik(kolekce){
     const k = p.kategorie || 'Bez okruhu';
     (skupiny[k] = skupiny[k] || []).push(p);
   }
-  const poradi = Object.keys(skupiny).sort((a, b) => a.localeCompare(b, 'cs'));
+  const poradi = U.seradKategorie(Object.keys(skupiny));
 
   const telo = poradi.map(kat => `
     <tr class="okruh"><td colspan="5">${U.esc(kat)}</td></tr>
-    ${skupiny[kat].sort((a, b) => (a.nazev || '').localeCompare(b.nazev || '', 'cs')).map(p => {
+    ${skupiny[kat].sort((a, b) =>
+      (a.kod || 'zzz').localeCompare(b.kod || 'zzz', 'cs') ||
+      (a.nazev || '').localeCompare(b.nazev || '', 'cs')).map(p => {
       const cena = DB.sPrirazkou(p.cena);
       const sDph = cena * (1 + U.num(p.sazbaDph) / 100);
       return `<tr>

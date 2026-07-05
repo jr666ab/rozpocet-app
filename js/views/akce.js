@@ -170,7 +170,7 @@ function nabidkaPolozkaModal(akce, polozka){
     </div>
     <div class="pole-rada">
       <div class="pole"><label>Cena/MJ bez DPH</label><input id="fCena" type="text" inputmode="decimal" value="${p.jednotkovaCenaBezDph ?? ''}"></div>
-      <div class="pole"><label>DPH %</label><input id="fDph" type="text" inputmode="numeric" value="${p.sazbaDph ?? 21}"></div>
+      <div class="pole"><label>DPH %</label><input id="fDph" type="text" inputmode="numeric" value="${p.sazbaDph ?? DB.dph()}"></div>
     </div>
     <div class="modal-akce">
       ${polozka ? '<button class="btn btn-cerveny" id="fSmazat">Smazat</button>' : ''}
@@ -221,7 +221,7 @@ function vyberZCeniku(akce){
       <div class="radek" data-id="${x.id}">
         <div class="radek-info">
           <div class="radek-nazev">${U.esc(x.nazev)}</div>
-          <div class="radek-sub">${x.kod ? U.esc(x.kod) + ' · ' : ''}${U.kc(x.cena)}/${U.esc(x.jednotka || 'ks')} · DPH ${U.num(x.sazbaDph ?? 21)} %</div>
+          <div class="radek-sub">${x.kod ? U.esc(x.kod) + ' · ' : ''}${U.kc(x.cena)}/${U.esc(x.jednotka || 'ks')} · DPH ${U.num(x.sazbaDph ?? DB.dph())} %</div>
         </div>
       </div>`).join('')
       : `<div class="prazdno">${DB.data[typ].length ? 'Nic nenalezeno' : 'Ceník je prázdný – nahraj ho v záložce Ceníky'}</div>`;
@@ -234,14 +234,14 @@ function vyberZCeniku(akce){
         <h2>${U.esc(x.nazev)}</h2>
         <div class="pole"><label>Množství (${U.esc(x.jednotka || 'ks')})</label>
           <input id="fMn" type="text" inputmode="decimal" value="1"></div>
-        <div class="radek-sub" style="margin-bottom:10px">Cena ${U.kc(cenaPrir)}/${U.esc(x.jednotka || 'ks')}${prir ? ` (vč. přirážky ${prir} %)` : ''}</div>
+        <div class="radek-sub" style="margin-bottom:10px">Cena ${U.kc(cenaPrir)}/${U.esc(x.jednotka || 'ks')}${prir ? ` (vč. přirážky ${prir} %)` : ''}${x.trh ? `<br>📊 trh 2026: ${U.esc(x.trh)} Kč` : ''}</div>
         <div class="modal-akce"><button class="btn btn-plny" id="fOk">Přidat do nabídky</button></div>`);
       const inp = ov2.querySelector('#fMn'); inp.focus(); inp.select();
       ov2.querySelector('#fOk').onclick = () => {
         akce.nabidka.push({
           id: U.uid(), zdroj: 'databaze', nazev: x.nazev,
           mnozstvi: U.num(inp.value) || 1, jednotka: x.jednotka || 'ks',
-          jednotkovaCenaBezDph: cenaPrir, sazbaDph: U.num(x.sazbaDph ?? 21)
+          jednotkovaCenaBezDph: cenaPrir, sazbaDph: U.num(x.sazbaDph ?? DB.dph())
         });
         DB.uloz(); U.zavriModal(ov2); U.zavriModal(ov);
         U.toast('Přidáno do nabídky'); prekresliTab();
@@ -280,7 +280,7 @@ function vlozVzorModal(akce){
       akce.nabidka.push({
         id: U.uid(), zdroj: 'vzor', nazev: p.nazev,
         mnozstvi: U.num(p.mnozstvi) || 1, jednotka: p.jednotka || 'ks',
-        jednotkovaCenaBezDph: DB.sPrirazkou(p.jednotkovaCena), sazbaDph: U.num(p.sazbaDph ?? 21)
+        jednotkovaCenaBezDph: DB.sPrirazkou(p.jednotkovaCena), sazbaDph: U.num(p.sazbaDph ?? DB.dph())
       });
     }
     DB.uloz(); U.zavriModal(ov);
@@ -656,39 +656,69 @@ function tabDenik(el, akce){
 
 function toggleDiktovani(btn, textarea, zaznam){
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) { U.toast('Tento prohlížeč diktování neumí (zkus Chrome nebo Safari)', 'chyba'); return; }
+  if (!SR) {
+    U.toast('Prohlížeč diktování neumí – použij mikrofon 🎤 na klávesnici telefonu', 'chyba');
+    textarea.focus();
+    return;
+  }
 
-  if (aktivniDiktovani) { aktivniDiktovani.stop(); return; }
+  // druhé ťuknutí = stop
+  if (aktivniDiktovani) {
+    aktivniDiktovani.chciDiktovat = false;
+    try { aktivniDiktovani.stop(); } catch (e) {}
+    return;
+  }
 
   const r = new SR();
   r.lang = 'cs-CZ';
   r.continuous = true;
   r.interimResults = true;
+  r.chciDiktovat = true;
+
+  const puvodniPlaceholder = textarea.placeholder;
 
   r.onresult = e => {
-    let finalni = '';
+    let finalni = '', prubezne = '';
     for (let i = e.resultIndex; i < e.results.length; i++) {
       if (e.results[i].isFinal) finalni += e.results[i][0].transcript;
+      else prubezne += e.results[i][0].transcript;
     }
     if (finalni) {
       const mezera = textarea.value && !/\s$/.test(textarea.value) ? ' ' : '';
       textarea.value += mezera + finalni.trim();
       zaznam.text = textarea.value;
       DB.uloz();
+      textarea.scrollTop = textarea.scrollHeight;
     }
-  };
-  r.onerror = e => {
-    if (e.error === 'not-allowed') U.toast('Povol přístup k mikrofonu', 'chyba');
-  };
-  r.onend = () => {
-    aktivniDiktovani = null;
-    btn.classList.remove('nahravam');
+    // průběžný náhled toho, co appka právě slyší
+    textarea.placeholder = prubezne ? '… ' + prubezne : puvodniPlaceholder;
   };
 
-  r.start();
+  r.onerror = e => {
+    if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+      r.chciDiktovat = false;
+      U.toast('Povol appce přístup k mikrofonu (nastavení prohlížeče)', 'chyba');
+    } else if (e.error === 'network') {
+      r.chciDiktovat = false;
+      U.toast('Diktování potřebuje internet', 'chyba');
+    }
+    // 'no-speech' a 'aborted' neřešíme – onend to restartuje
+  };
+
+  // prohlížeč rozpoznávání sám po pauze vypíná → dokud uživatel nezastavil, nastartovat znovu
+  r.onend = () => {
+    if (r.chciDiktovat) {
+      try { r.start(); return; } catch (e) {}
+    }
+    aktivniDiktovani = null;
+    btn.classList.remove('nahravam');
+    textarea.placeholder = puvodniPlaceholder;
+  };
+
+  try { r.start(); } catch (e) { U.toast('Diktování se nepodařilo spustit', 'chyba'); return; }
   aktivniDiktovani = r;
   btn.classList.add('nahravam');
-  U.toast('Diktuj… (dalším klikem zastavíš)');
+  U.toast('🎤 Diktuj… (dalším ťuknutím zastavíš)');
 }
 
 /* ============================================================

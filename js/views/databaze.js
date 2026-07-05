@@ -56,15 +56,18 @@ function dbCenik(el, kolekce){
       const k = p.kategorie || 'Bez okruhu';
       (skupiny[k] = skupiny[k] || []).push(p);
     }
-    const poradi = Object.keys(skupiny).sort((a, b) => a.localeCompare(b, 'cs'));
+    const poradi = U.seradKategorie(Object.keys(skupiny));
     seznam.innerHTML = poradi.map(kat => `
-      <div class="sekce-nadpis">${U.esc(kat)} <span style="color:var(--akcent);font-weight:700">(${skupiny[kat].length})</span></div>
+      <div class="sekce-nadpis" style="display:flex;align-items:center;gap:8px">
+        <span style="flex:1">${U.esc(kat)} <span style="color:var(--akcent);font-weight:700">(${skupiny[kat].length})</span></span>
+        <button class="btn btn-mini btn-cerveny" data-smaz-okruh="${U.esc(kat)}" title="Smazat celý okruh">🗑</button>
+      </div>
       ${skupiny[kat].map(p => {
         const c = DB.sPrirazkou(p.cena);
         return `<div class="radek" data-id="${p.id}" style="cursor:pointer">
           <div class="radek-info">
             <div class="radek-nazev">${U.esc(p.nazev)}${p.kod ? `<span class="stitek">${U.esc(p.kod)}</span>` : ''}</div>
-            <div class="radek-sub">DPH ${U.num(p.sazbaDph ?? 21)} %${p.poznamka ? ' · ' + U.esc(p.poznamka) : ''}</div>
+            <div class="radek-sub">DPH ${U.num(p.sazbaDph ?? DB.dph())} %${p.trh ? ' · trh: ' + U.esc(p.trh) + ' Kč' : ''}${p.poznamka ? ' · ' + U.esc(p.poznamka) : ''}</div>
           </div>
           <div class="radek-cena">${U.kc(c)}<div class="radek-sub" style="font-weight:400">/${U.esc(p.jednotka || 'ks')}</div></div>
         </div>`;
@@ -72,6 +75,16 @@ function dbCenik(el, kolekce){
 
     seznam.querySelectorAll('.radek').forEach(r =>
       r.onclick = () => cenikPolozkaModal(kolekce, seznamDat.find(p => p.id === r.dataset.id)));
+
+    seznam.querySelectorAll('[data-smaz-okruh]').forEach(b => b.onclick = e => {
+      e.stopPropagation();
+      const kat = b.dataset.smazOkruh;
+      const pocet = DB.data[kolekce].filter(p => (p.kategorie || 'Bez okruhu') === kat).length;
+      if (!confirm(`Smazat celý okruh „${kat}" (${pocet} položek)?`)) return;
+      DB.data[kolekce] = DB.data[kolekce].filter(p => (p.kategorie || 'Bez okruhu') !== kat);
+      DB.ulozSdilene(); render();
+      U.toast(`Okruh „${kat}" smazán`);
+    });
   }
   hledat.oninput = U.debounce(vypis, 200);
   vypis();
@@ -122,10 +135,11 @@ function cenikPolozkaModal(kolekce, p){
       <div class="pole"><label>Jednotka</label><input id="fJednotka" value="${U.esc(x.jednotka || (jeMaterial ? 'ks' : 'hod'))}"></div>
     </div>
     <div class="pole-rada">
-      <div class="pole"><label>Sazba DPH %</label><input id="fDph" type="text" inputmode="numeric" value="${x.sazbaDph ?? DB.data.nastaveni.vychoziDph ?? 21}"></div>
+      <div class="pole"><label>Sazba DPH %</label><input id="fDph" type="text" inputmode="numeric" value="${x.sazbaDph ?? DB.dph()}"></div>
       <div class="pole"><label>Okruh</label><input id="fKat" list="katList" value="${U.esc(x.kategorie || '')}" placeholder="např. Kabely"></div>
     </div>
     <datalist id="katList">${cenikKategorie(kolekce).map(k => `<option value="${U.esc(k)}">`).join('')}</datalist>
+    ${x.trh ? `<div class="radek-sub" style="margin-bottom:10px">📊 Orientační trh 2026: <b>${U.esc(x.trh)} Kč</b> — porovnej se svojí cenou</div>` : ''}
     <div class="modal-akce">
       ${p ? '<button class="btn btn-cerveny" id="fSmazat">Smazat</button>' : ''}
       <button class="btn btn-plny" id="fUlozit">Uložit</button>
@@ -178,14 +192,25 @@ function dbVzory(el){
         <div class="vzor-obsah">
           ${v.popis ? `<div class="radek-sub" style="margin:8px 0">${U.esc(v.popis)}</div>` : ''}
           <div style="margin-top:8px">
-          ${(v.polozky || []).map(p => `
-            <div class="radek" data-pid="${p.id}" style="cursor:pointer">
-              <div class="radek-info">
-                <div class="radek-nazev">${U.esc(p.nazev)}</div>
-                <div class="radek-sub">${U.mn(p.mnozstvi)} ${U.esc(p.jednotka || '')} × ${U.kc(p.jednotkovaCena)} · DPH ${U.num(p.sazbaDph ?? 21)} %</div>
-              </div>
-              <div class="radek-cena">${U.kc(U.num(p.mnozstvi) * U.num(p.jednotkovaCena))}</div>
-            </div>`).join('') || '<div class="prazdno">Vzor je prázdný</div>'}
+          ${(() => {
+            const pol = v.polozky || [];
+            if (!pol.length) return '<div class="prazdno">Vzor je prázdný</div>';
+            const sk = {};
+            for (const p of pol) (sk[p.kategorie || ''] = sk[p.kategorie || ''] || []).push(p);
+            const kl = Object.keys(sk);
+            const radekHtml = p => `
+              <div class="radek" data-pid="${p.id}" style="cursor:pointer">
+                <div class="radek-info">
+                  <div class="radek-nazev">${U.esc(p.nazev)}</div>
+                  <div class="radek-sub">${U.mn(p.mnozstvi)} ${U.esc(p.jednotka || '')} × ${U.kc(p.jednotkovaCena)} · DPH ${U.num(p.sazbaDph ?? DB.dph())} %</div>
+                </div>
+                <div class="radek-cena">${U.kc(U.num(p.mnozstvi) * U.num(p.jednotkovaCena))}</div>
+              </div>`;
+            if (kl.length === 1 && kl[0] === '') return pol.map(radekHtml).join('');
+            return kl.map(k => `
+              ${k ? `<div class="sekce-nadpis">${U.esc(k)}</div>` : ''}
+              ${sk[k].map(radekHtml).join('')}`).join('');
+          })()}
           </div>
           <div class="btn-rada">
             <button class="btn btn-mini" data-akce="pridat">+ Položka</button>
@@ -252,7 +277,7 @@ function vzorPolozkaModal(vzor, p){
     </div>
     <div class="pole-rada">
       <div class="pole"><label>Cena bez DPH</label><input id="fCena" type="text" inputmode="decimal" value="${x.jednotkovaCena ?? ''}"></div>
-      <div class="pole"><label>DPH %</label><input id="fDph" type="text" inputmode="numeric" value="${x.sazbaDph ?? 21}"></div>
+      <div class="pole"><label>DPH %</label><input id="fDph" type="text" inputmode="numeric" value="${x.sazbaDph ?? DB.dph()}"></div>
     </div>
     <div class="modal-akce">
       ${p ? '<button class="btn btn-cerveny" id="fSmazat">Smazat</button>' : ''}
@@ -362,7 +387,7 @@ async function importModal(cil){
         </select></div>`).join('')}
     <div class="pole-rada">
       <div class="pole"><label>Výchozí DPH % (když není ve sloupci)</label>
-        <input id="iDph" type="text" inputmode="numeric" value="${DB.data.nastaveni.vychoziDph ?? 21}"></div>
+        <input id="iDph" type="text" inputmode="numeric" value="${DB.dph()}"></div>
       ${jeVzor ? '' : `<div class="pole"><label>Výchozí okruh</label>
         <input id="iKat" value="" placeholder="např. Materiál"></div>`}
     </div>

@@ -40,6 +40,12 @@ window.DB = {
     this.uloz();
   },
 
+  /* výchozí sazba DPH z nastavení (⚙) */
+  dph(){
+    const d = U.num(this.data.nastaveni.vychoziDph);
+    return d > 0 ? d : 21;
+  },
+
   /* cena z ceníku po přirážce (navýšení celého ceníku o X %) */
   sPrirazkou(cena){
     const p = U.num(this.data.nastaveni.prirazka);
