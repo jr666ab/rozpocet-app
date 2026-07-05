@@ -3,10 +3,22 @@
    Výhoda: bezchybná čeština (žádné problémy s fonty), nulové závislosti.
    Později jde vyměnit za pdf-lib s vloženým fontem, layout zůstane stejný. */
 
+/* posun data o N měsíců (pro platnost nabídky) */
+function plusMesicu(datumISO, mesicu){
+  const [y, m, d] = datumISO.slice(0, 10).split('-').map(Number);
+  const dt = new Date(y, m - 1 + mesicu, d);
+  return dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0');
+}
+
 function tiskniNabidku(akce){
   const n = DB.data.nastaveni || {};
   const s = nabidkaSoucty(akce);
   const sazby = Object.keys(s.dph).map(Number).sort((a, b) => a - b);
+
+  // datum vystavení se uloží při prvním tisku a už se nemění
+  if (!akce.nabidkaVystavena) { akce.nabidkaVystavena = U.dnes(); DB.uloz(); }
+  const vystavena = akce.nabidkaVystavena;
+  const platnostDo = plusMesicu(vystavena, 6);
 
   const radky = akce.nabidka.map((p, i) => {
     const celkem = U.num(p.mnozstvi) * U.num(p.jednotkovaCenaBezDph);
@@ -42,7 +54,8 @@ function tiskniNabidku(akce){
   .soucty{width:auto;margin-left:auto;min-width:280px}
   .soucty td{border:none;padding:4px 8px;font-size:13.5px}
   .soucty tr.celkem td{border-top:2px solid #0f766e;font-weight:700;font-size:15px;padding-top:8px}
-  .pata{margin-top:28px;font-size:11.5px;color:#6b7c78}
+  .podminky{margin-top:22px;font-size:12px;background:#e6f2f0;border-left:4px solid #0f766e;padding:10px 14px;border-radius:0 8px 8px 0}
+  .pata{margin-top:16px;font-size:11.5px;color:#6b7c78}
   @media print{ body{padding:10mm} }
 </style></head><body>
   <div class="hlava">
@@ -51,7 +64,8 @@ function tiskniNabidku(akce){
       <div class="info">
         <b>${U.esc(akce.nazev)}</b><br>
         ${akce.adresa ? U.esc(akce.adresa) + '<br>' : ''}
-        Datum: ${U.fmtDatum(U.dnes())}
+        Datum vystavení: <b>${U.fmtDatum(vystavena)}</b><br>
+        Platnost nabídky: <b>do ${U.fmtDatum(platnostDo)}</b> (6 měsíců)
       </div>
     </div>
     <div class="firma">
@@ -78,6 +92,11 @@ function tiskniNabidku(akce){
     <tr class="celkem"><td>Celkem s DPH</td><td class="r">${U.kc(s.s)}</td></tr>
   </table>
 
+  <div class="podminky">
+    Nabídka platí <b>6 měsíců</b> od data vystavení, tj. do ${U.fmtDatum(platnostDo)}.
+    Do této doby musí být práce zahájeny — po uplynutí platnosti dojde k přepočítání cen
+    dle aktuálního ceníku.
+  </div>
   <div class="pata">Nabídka vystavena v aplikaci Rozpočty staveb.</div>
   <script>window.onload = () => setTimeout(() => window.print(), 300);<\/script>
 </body></html>`;
