@@ -13,7 +13,6 @@ function plusMesicu(datumISO, mesicu){
 function tiskniNabidku(akce){
   const n = DB.data.nastaveni || {};
   const s = nabidkaSoucty(akce);
-  const sazby = Object.keys(s.dph).map(Number).sort((a, b) => a - b);
 
   // datum vystavení se uloží při prvním tisku a už se nemění
   if (!akce.nabidkaVystavena) { akce.nabidkaVystavena = U.dnes(); DB.uloz(); }
@@ -28,14 +27,11 @@ function tiskniNabidku(akce){
       <td class="r">${U.mn(p.mnozstvi)}</td>
       <td class="c">${U.esc(p.jednotka || '')}</td>
       <td class="r">${U.kc(p.jednotkovaCenaBezDph)}</td>
-      <td class="c">${U.num(p.sazbaDph)} %</td>
       <td class="r">${U.kc(celkem)}</td>
     </tr>`;
   }).join('');
 
-  const rozpadDph = sazby.map(sz =>
-    `<tr><td>DPH ${sz} %</td><td class="r">${U.kc(s.dph[sz])}</td></tr>`
-  ).join('');
+  const rozpadDph = `<tr><td>DPH ${s.sazba} %</td><td class="r">${U.kc(s.dphCelkem)}</td></tr>`;
 
   const html = `<!DOCTYPE html><html lang="cs"><head><meta charset="utf-8">
 <title>Nabídka – ${U.esc(akce.nazev)}</title>
@@ -81,9 +77,9 @@ function tiskniNabidku(akce){
   <table>
     <thead><tr>
       <th class="c">#</th><th>Položka</th><th class="r">Množství</th><th class="c">MJ</th>
-      <th class="r">Cena/MJ</th><th class="c">DPH</th><th class="r">Celkem bez DPH</th>
+      <th class="r">Cena/MJ</th><th class="r">Celkem bez DPH</th>
     </tr></thead>
-    <tbody>${radky || '<tr><td colspan="7" style="text-align:center;color:#999">Žádné položky</td></tr>'}</tbody>
+    <tbody>${radky || '<tr><td colspan="6" style="text-align:center;color:#999">Žádné položky</td></tr>'}</tbody>
   </table>
 
   <table class="soucty">
@@ -132,7 +128,7 @@ function tiskniCenik(kolekce){
       (a.kod || 'zzz').localeCompare(b.kod || 'zzz', 'cs') ||
       (a.nazev || '').localeCompare(b.nazev || '', 'cs')).map(p => {
       const cena = DB.sPrirazkou(p.cena);
-      const sDph = cena * (1 + U.num(p.sazbaDph) / 100);
+      const sDph = cena * (1 + DB.dph() / 100);
       return `<tr>
         <td>${U.esc(p.nazev)}</td>
         <td class="c">${U.esc(p.kod || '')}</td>

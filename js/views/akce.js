@@ -2,17 +2,16 @@
 
 const STATUS_NAZVY = { nabidka: 'Nabídka', prijato: 'Přijato', odmitnuto: 'Odmítnuto', hotovo: 'Hotovo' };
 
-/* ---- výpočty ---- */
+/* ---- výpočty ----
+   DPH se počítá jednou sazbou z nastavení (⚙), ne po položkách. */
 function nabidkaSoucty(akce){
-  let bez = 0; const dph = {};
+  let bez = 0;
   for (const p of akce.nabidka) {
-    const c = U.num(p.mnozstvi) * U.num(p.jednotkovaCenaBezDph);
-    bez += c;
-    const sz = U.num(p.sazbaDph);
-    dph[sz] = (dph[sz] || 0) + c * sz / 100;
+    bez += U.num(p.mnozstvi) * U.num(p.jednotkovaCenaBezDph);
   }
-  const dphCelkem = Object.values(dph).reduce((a, b) => a + b, 0);
-  return { bez, dph, dphCelkem, s: bez + dphCelkem };
+  const sazba = DB.dph();
+  const dphCelkem = bez * sazba / 100;
+  return { bez, sazba, dph: { [sazba]: dphCelkem }, dphCelkem, s: bez + dphCelkem };
 }
 
 function vicePraceCelkem(akce){
@@ -125,21 +124,22 @@ function tabNabidka(el, akce){
     ${akce.nabidka.length ? akce.nabidka.map(p => {
       const celkem = U.num(p.mnozstvi) * U.num(p.jednotkovaCenaBezDph);
       const st = zdrojStitek[p.zdroj];
-      return `<div class="radek" data-id="${p.id}" style="cursor:pointer">
+      return `<div class="radek nabidka-radek" data-id="${p.id}">
         <div class="radek-info">
-          <div class="radek-nazev">${U.esc(p.nazev)}${st ? `<span class="stitek">${st}</span>` : ''}</div>
-          <div class="radek-sub">${U.mn(p.mnozstvi)} ${U.esc(p.jednotka || '')} × ${U.kc(p.jednotkovaCenaBezDph)} · DPH ${U.num(p.sazbaDph)} %</div>
+          <div class="radek-nazev" data-detail style="cursor:pointer">${U.esc(p.nazev)}${st ? `<span class="stitek">${st}</span>` : ''}</div>
+          <div class="radek-sub">${U.kc(p.jednotkovaCenaBezDph)}/${U.esc(p.jednotka || 'ks')}</div>
+          <div class="mn-stepper">
+            <button data-krok="-1" type="button">−</button>
+            <input data-mn type="text" inputmode="decimal" value="${U.num(p.mnozstvi)}">
+            <span class="mn-jednotka">${U.esc(p.jednotka || 'ks')}</span>
+            <button data-krok="1" type="button">+</button>
+          </div>
         </div>
-        <div class="radek-cena">${U.kc(celkem)}</div>
+        <div class="radek-cena" data-celkem>${U.kc(celkem)}</div>
       </div>`;
     }).join('') : '<div class="prazdno">Nabídka je prázdná.<br>Přidej položky ručně, z ceníku nebo vlož vzor.</div>'}
 
-    <div class="karta souhrn">
-      <div class="souhrn-radek"><span>Celkem bez DPH</span><b>${U.kc(s.bez)}</b></div>
-      ${Object.keys(s.dph).map(Number).sort((a,b)=>a-b).map(sz =>
-        `<div class="souhrn-radek"><span>DPH ${sz} %</span><span>${U.kc(s.dph[sz])}</span></div>`).join('')}
-      <div class="souhrn-radek velky"><span>Celkem s DPH</span><b>${U.kc(s.s)}</b></div>
-    </div>
+    <div class="karta souhrn" id="nSouhrn"></div>
 
     <div class="btn-rada">
       <button class="btn" id="nPdf">🖨 PDF nabídky</button>
@@ -148,8 +148,33 @@ function tabNabidka(el, akce){
         <button class="btn btn-cerveny" id="nOdmitnuto">✗ Odmítnuto</button>` : ''}
     </div>`;
 
-  el.querySelectorAll('.radek[data-id]').forEach(r =>
-    r.onclick = () => nabidkaPolozkaModal(akce, akce.nabidka.find(p => p.id === r.dataset.id)));
+  aktualizujNabidkaSouhrn(el, akce);
+
+  el.querySelectorAll('.nabidka-radek').forEach(radek => {
+    const p = akce.nabidka.find(x => x.id === radek.dataset.id);
+    const inp = radek.querySelector('[data-mn]');
+
+    const ulozMnozstvi = noveMn => {
+      p.mnozstvi = Math.max(0, noveMn);
+      DB.uloz();
+      radek.querySelector('[data-celkem]').textContent =
+        U.kc(U.num(p.mnozstvi) * U.num(p.jednotkovaCenaBezDph));
+      aktualizujNabidkaSouhrn(el, akce);
+    };
+
+    // ťuknutí do políčka = psaní množství rovnou v seznamu
+    inp.oninput = U.debounce(() => ulozMnozstvi(U.num(inp.value)), 350);
+    inp.onblur = () => { inp.value = U.num(p.mnozstvi); };
+
+    // tlačítka +/−
+    radek.querySelectorAll('[data-krok]').forEach(b => b.onclick = () => {
+      ulozMnozstvi(U.num(p.mnozstvi) + Number(b.dataset.krok));
+      inp.value = U.num(p.mnozstvi);
+    });
+
+    // detail (úprava názvu, ceny, smazání) jen přes název položky
+    radek.querySelector('[data-detail]').onclick = () => nabidkaPolozkaModal(akce, p);
+  });
   el.querySelector('#nRucne').onclick = () => nabidkaPolozkaModal(akce, null);
   el.querySelector('#nDatabaze').onclick = () => vyberZCeniku(akce);
   el.querySelector('#nVzor').onclick = () => vlozVzorModal(akce);
@@ -157,6 +182,16 @@ function tabNabidka(el, akce){
   const bPri = el.querySelector('#nPrijato'), bOdm = el.querySelector('#nOdmitnuto');
   if (bPri) bPri.onclick = () => { akce.status = 'prijato'; DB.uloz(); U.toast('Akce přijata 🎉'); prekresliTab(); };
   if (bOdm) bOdm.onclick = () => { akce.status = 'odmitnuto'; DB.uloz(); U.toast('Akce odmítnuta'); prekresliTab(); };
+}
+
+function aktualizujNabidkaSouhrn(el, akce){
+  const cil = el.querySelector('#nSouhrn');
+  if (!cil) return;
+  const s = nabidkaSoucty(akce);
+  cil.innerHTML = `
+    <div class="souhrn-radek"><span>Celkem bez DPH</span><b>${U.kc(s.bez)}</b></div>
+    <div class="souhrn-radek"><span>DPH ${s.sazba} %</span><span>${U.kc(s.dphCelkem)}</span></div>
+    <div class="souhrn-radek velky"><span>Celkem s DPH</span><b>${U.kc(s.s)}</b></div>`;
 }
 
 function nabidkaPolozkaModal(akce, polozka){
@@ -168,10 +203,7 @@ function nabidkaPolozkaModal(akce, polozka){
       <div class="pole"><label>Množství</label><input id="fMnozstvi" type="text" inputmode="decimal" value="${p.mnozstvi ?? 1}"></div>
       <div class="pole"><label>Jednotka</label><input id="fJednotka" value="${U.esc(p.jednotka || 'ks')}"></div>
     </div>
-    <div class="pole-rada">
-      <div class="pole"><label>Cena/MJ bez DPH</label><input id="fCena" type="text" inputmode="decimal" value="${p.jednotkovaCenaBezDph ?? ''}"></div>
-      <div class="pole"><label>DPH %</label><input id="fDph" type="text" inputmode="numeric" value="${p.sazbaDph ?? DB.dph()}"></div>
-    </div>
+    <div class="pole"><label>Cena/MJ bez DPH</label><input id="fCena" type="text" inputmode="decimal" value="${p.jednotkovaCenaBezDph ?? ''}"></div>
     <div class="modal-akce">
       ${polozka ? '<button class="btn btn-cerveny" id="fSmazat">Smazat</button>' : ''}
       <button class="btn btn-plny" id="fUlozit">Uložit</button>
@@ -185,7 +217,7 @@ function nabidkaPolozkaModal(akce, polozka){
       mnozstvi: U.num(ov.querySelector('#fMnozstvi').value),
       jednotka: ov.querySelector('#fJednotka').value.trim(),
       jednotkovaCenaBezDph: U.num(ov.querySelector('#fCena').value),
-      sazbaDph: U.num(ov.querySelector('#fDph').value)
+      sazbaDph: polozka ? polozka.sazbaDph : DB.dph()
     };
     if (polozka) Object.assign(polozka, data);
     else akce.nabidka.push({ id: U.uid(), zdroj: 'rucni', ...data });
@@ -221,7 +253,7 @@ function vyberZCeniku(akce){
       <div class="radek" data-id="${x.id}">
         <div class="radek-info">
           <div class="radek-nazev">${U.esc(x.nazev)}</div>
-          <div class="radek-sub">${x.kod ? U.esc(x.kod) + ' · ' : ''}${U.kc(x.cena)}/${U.esc(x.jednotka || 'ks')} · DPH ${U.num(x.sazbaDph ?? DB.dph())} %</div>
+          <div class="radek-sub">${x.kod ? U.esc(x.kod) + ' · ' : ''}${U.kc(x.cena)}/${U.esc(x.jednotka || 'ks')}${x.trh ? ' · trh: ' + U.esc(x.trh) + ' Kč' : ''}</div>
         </div>
       </div>`).join('')
       : `<div class="prazdno">${DB.data[typ].length ? 'Nic nenalezeno' : 'Ceník je prázdný – nahraj ho v záložce Ceníky'}</div>`;

@@ -106,6 +106,23 @@ input,select,textarea{font:inherit;color:inherit}
   border-radius:6px;padding:1px 6px;vertical-align:middle;margin-left:4px;
 }
 
+/* ---- stepper množství v nabídce ---- */
+.mn-stepper{display:flex;align-items:center;gap:6px;margin-top:8px}
+.mn-stepper button{
+  width:38px;height:38px;border-radius:10px;flex:none;
+  background:var(--akcent-svetly);color:var(--akcent-tmavy);
+  font-size:20px;font-weight:700;display:flex;align-items:center;justify-content:center;
+}
+.mn-stepper button:active{transform:scale(.94);background:var(--akcent);color:#fff}
+.mn-stepper input{
+  width:72px;text-align:center;font-size:16px;font-weight:700;
+  border:1.5px solid var(--linka);border-radius:10px;padding:7px 4px;background:#fff;
+}
+.mn-stepper input:focus{outline:none;border-color:var(--akcent)}
+.mn-jednotka{font-size:13px;color:var(--slaby);font-weight:600;min-width:24px}
+.nabidka-radek{align-items:flex-start}
+.nabidka-radek .radek-cena{margin-top:4px}
+
 /* ---- badge stavů ---- */
 .badge{
   display:inline-block;font-size:11.5px;font-weight:700;
