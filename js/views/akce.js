@@ -228,17 +228,20 @@ function vyberZCeniku(akce){
 
     seznam.querySelectorAll('.radek').forEach(r => r.onclick = () => {
       const x = DB.data[typ].find(i => i.id === r.dataset.id);
+      const cenaPrir = DB.sPrirazkou(x.cena);
+      const prir = U.num(DB.data.nastaveni.prirazka);
       const ov2 = U.modal(`
         <h2>${U.esc(x.nazev)}</h2>
         <div class="pole"><label>Množství (${U.esc(x.jednotka || 'ks')})</label>
           <input id="fMn" type="text" inputmode="decimal" value="1"></div>
+        <div class="radek-sub" style="margin-bottom:10px">Cena ${U.kc(cenaPrir)}/${U.esc(x.jednotka || 'ks')}${prir ? ` (vč. přirážky ${prir} %)` : ''}</div>
         <div class="modal-akce"><button class="btn btn-plny" id="fOk">Přidat do nabídky</button></div>`);
       const inp = ov2.querySelector('#fMn'); inp.focus(); inp.select();
       ov2.querySelector('#fOk').onclick = () => {
         akce.nabidka.push({
           id: U.uid(), zdroj: 'databaze', nazev: x.nazev,
           mnozstvi: U.num(inp.value) || 1, jednotka: x.jednotka || 'ks',
-          jednotkovaCenaBezDph: U.num(x.cena), sazbaDph: U.num(x.sazbaDph ?? 21)
+          jednotkovaCenaBezDph: cenaPrir, sazbaDph: U.num(x.sazbaDph ?? 21)
         });
         DB.uloz(); U.zavriModal(ov2); U.zavriModal(ov);
         U.toast('Přidáno do nabídky'); prekresliTab();
@@ -277,7 +280,7 @@ function vlozVzorModal(akce){
       akce.nabidka.push({
         id: U.uid(), zdroj: 'vzor', nazev: p.nazev,
         mnozstvi: U.num(p.mnozstvi) || 1, jednotka: p.jednotka || 'ks',
-        jednotkovaCenaBezDph: U.num(p.jednotkovaCena), sazbaDph: U.num(p.sazbaDph ?? 21)
+        jednotkovaCenaBezDph: DB.sPrirazkou(p.jednotkovaCena), sazbaDph: U.num(p.sazbaDph ?? 21)
       });
     }
     DB.uloz(); U.zavriModal(ov);

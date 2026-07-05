@@ -40,6 +40,12 @@ function nastaveniModal(){
       <div class="pole"><label>Telefon</label><input id="nTel" value="${U.esc(n.telefon || '')}"></div>
       <div class="pole"><label>E-mail</label><input id="nEmail" value="${U.esc(n.email || '')}"></div>
     </div>
+    <div class="sekce-nadpis" style="margin-left:0">Ceník a ceny</div>
+    <div class="pole-rada">
+      <div class="pole"><label>Výchozí sazba DPH %</label><input id="nDph" type="text" inputmode="numeric" value="${U.num(n.vychoziDph ?? 21)}"></div>
+      <div class="pole"><label>Přirážka na ceník %</label><input id="nPrir" type="text" inputmode="decimal" value="${U.num(n.prirazka ?? 0)}"></div>
+    </div>
+    <div class="radek-sub" style="margin:-4px 0 4px">Přirážka navýší všechny ceny z ceníku o dané % (např. 15 = ceny +15 %). Používá se v ceníku i při vkládání do nabídky.</div>
     <div class="modal-akce"><button class="btn btn-plny" id="nUlozit">Uložit</button></div>
     <div class="radek-sub" style="margin-top:12px">
       Cloud: ${window.Sync && Sync.stav === 'zapnuto' ? '✅ záloha běží' : (window.FIREBASE_CONFIG ? '⏳ připojuji…' : '⚪ vypnutý (data jen v zařízení)')}
@@ -53,10 +59,13 @@ function nastaveniModal(){
       ico: ov.querySelector('#nIco').value.trim(),
       dic: ov.querySelector('#nDic').value.trim(),
       telefon: ov.querySelector('#nTel').value.trim(),
-      email: ov.querySelector('#nEmail').value.trim()
+      email: ov.querySelector('#nEmail').value.trim(),
+      vychoziDph: U.num(ov.querySelector('#nDph').value) || 21,
+      prirazka: U.num(ov.querySelector('#nPrir').value)
     });
     DB.uloz(); U.zavriModal(ov);
     U.toast('Nastavení uloženo');
+    render();
   };
 }
 

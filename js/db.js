@@ -17,6 +17,8 @@ window.DB = {
     d.prace    = Array.isArray(d.prace)    ? d.prace    : [];   // ceník prací
     d.vzory    = Array.isArray(d.vzory)    ? d.vzory    : [];
     d.nastaveni = d.nastaveni && typeof d.nastaveni === 'object' ? d.nastaveni : {};
+    if (d.nastaveni.vychoziDph == null) d.nastaveni.vychoziDph = 21;
+    if (d.nastaveni.prirazka == null) d.nastaveni.prirazka = 0;
     for (const a of d.akce) {
       a.nabidka   = Array.isArray(a.nabidka)   ? a.nabidka   : [];
       a.realita   = Array.isArray(a.realita)   ? a.realita   : [];
@@ -36,6 +38,34 @@ window.DB = {
   ulozSdilene(){
     this.data.cenikyZmena = Date.now();
     this.uloz();
+  },
+
+  /* cena z ceníku po přirážce (navýšení celého ceníku o X %) */
+  sPrirazkou(cena){
+    const p = U.num(this.data.nastaveni.prirazka);
+    return U.num(cena) * (1 + p / 100);
+  },
+
+  /* načtení výchozího sloučeného ceníku (Stefan + Windisch) */
+  nactiVychoziCenik(rezim){
+    const zdroj = window.CENIK_DATA;
+    if (!zdroj) return { pridano: 0 };
+    let pridano = 0;
+    const kopie = x => JSON.parse(JSON.stringify(x));
+    for (const kol of ['polozky', 'prace', 'vzory']) {
+      if (rezim === 'nahradit') this.data[kol] = [];
+      const existKody = new Set(this.data[kol].map(i => (i.nazev || '').toLowerCase().trim()));
+      for (const it of (zdroj[kol] || [])) {
+        if (rezim === 'doplnit' && existKody.has((it.nazev || '').toLowerCase().trim())) continue;
+        const novy = kopie(it);
+        novy.id = U.uid();
+        if (novy.polozky) novy.polozky.forEach(p => p.id = U.uid());
+        this.data[kol].push(novy);
+        pridano++;
+      }
+    }
+    this.ulozSdilene();
+    return { pridano };
   },
 
   akce(id){ return this.data.akce.find(a => a.id === id); },

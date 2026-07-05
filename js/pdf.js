@@ -82,8 +82,76 @@ function tiskniNabidku(akce){
   <script>window.onload = () => setTimeout(() => window.print(), 300);<\/script>
 </body></html>`;
 
+  otevriTisk(html);
+}
+
+function otevriTisk(html){
   const w = window.open('', '_blank');
   if (!w) { U.toast('Prohlížeč zablokoval nové okno – povol vyskakovací okna', 'chyba'); return; }
   w.document.write(html);
   w.document.close();
+}
+
+/* ===== Tisk ceníku (materiál nebo práce), seskupeno do okruhů ===== */
+function tiskniCenik(kolekce){
+  const n = DB.data.nastaveni || {};
+  const prir = U.num(n.prirazka);
+  const nadpis = kolekce === 'prace' ? 'Ceník prací' : 'Ceník materiálu';
+  const polozky = [...DB.data[kolekce]];
+  if (!polozky.length) { U.toast('Ceník je prázdný', 'chyba'); return; }
+
+  const skupiny = {};
+  for (const p of polozky) {
+    const k = p.kategorie || 'Bez okruhu';
+    (skupiny[k] = skupiny[k] || []).push(p);
+  }
+  const poradi = Object.keys(skupiny).sort((a, b) => a.localeCompare(b, 'cs'));
+
+  const telo = poradi.map(kat => `
+    <tr class="okruh"><td colspan="5">${U.esc(kat)}</td></tr>
+    ${skupiny[kat].sort((a, b) => (a.nazev || '').localeCompare(b.nazev || '', 'cs')).map(p => {
+      const cena = DB.sPrirazkou(p.cena);
+      const sDph = cena * (1 + U.num(p.sazbaDph) / 100);
+      return `<tr>
+        <td>${U.esc(p.nazev)}</td>
+        <td class="c">${U.esc(p.kod || '')}</td>
+        <td class="c">${U.esc(p.jednotka || 'ks')}</td>
+        <td class="r">${U.kc(cena)}</td>
+        <td class="r">${U.kc(sDph)}</td>
+      </tr>`;
+    }).join('')}`).join('');
+
+  const html = `<!DOCTYPE html><html lang="cs"><head><meta charset="utf-8">
+<title>${nadpis}</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#152523;padding:28px;font-size:12px}
+  h1{font-size:20px;color:#0b5d57;margin-bottom:2px}
+  .hlava{display:flex;justify-content:space-between;border-bottom:3px solid #0f766e;padding-bottom:10px;margin-bottom:6px}
+  .firma{text-align:right;font-size:11px;line-height:1.5}
+  .pozn{font-size:11px;color:#6b7c78;margin-bottom:12px}
+  table{width:100%;border-collapse:collapse}
+  th{background:#e6f2f0;color:#0b5d57;font-size:10.5px;text-transform:uppercase;position:sticky;top:0}
+  th,td{border:1px solid #cfe0dd;padding:4px 7px;text-align:left;vertical-align:top}
+  .r{text-align:right;white-space:nowrap}.c{text-align:center;white-space:nowrap}
+  tr.okruh td{background:#0f766e;color:#fff;font-weight:700;font-size:12px}
+  @media print{body{padding:8mm}tr{page-break-inside:avoid}}
+</style></head><body>
+  <div class="hlava">
+    <div><h1>${nadpis}</h1><div style="font-size:11px">Datum: ${U.fmtDatum(U.dnes())} · ${polozky.length} položek</div></div>
+    <div class="firma">
+      ${n.firma ? `<b>${U.esc(n.firma)}</b><br>` : ''}
+      ${n.ico ? 'IČO: ' + U.esc(n.ico) + '<br>' : ''}
+      ${n.telefon ? 'Tel: ' + U.esc(n.telefon) : ''}
+    </div>
+  </div>
+  <div class="pozn">Ceny za měrnou jednotku.${prir ? ` Navýšeno o přirážku ${prir} %.` : ''} Sloupce: bez DPH / s DPH.</div>
+  <table>
+    <thead><tr><th>Položka</th><th class="c">Kód</th><th class="c">MJ</th><th class="r">Cena bez DPH</th><th class="r">Cena s DPH</th></tr></thead>
+    <tbody>${telo}</tbody>
+  </table>
+  <script>window.onload = () => setTimeout(() => window.print(), 300);<\/script>
+</body></html>`;
+
+  otevriTisk(html);
 }
