@@ -77,7 +77,10 @@ function akceMenuModal(akce){
     <button class="btn btn-velky btn-cerveny" id="mSmazat" style="margin-top:14px">🗑 Smazat akci</button>`);
 
   ov.querySelectorAll('[data-status]').forEach(b => b.onclick = () => {
-    akce.status = b.dataset.status; DB.uloz(); U.zavriModal(ov); prekresliTab();
+    akce.status = b.dataset.status;
+    if (akce.status === 'hotovo' && !akce.datumDokonceni) akce.datumDokonceni = U.dnes();
+    if (akce.status !== 'hotovo') akce.datumDokonceni = null;
+    DB.uloz(); U.zavriModal(ov); prekresliTab();
   });
   ov.querySelector('#mUpravit').onclick = () => {
     U.zavriModal(ov);
@@ -474,14 +477,22 @@ function aktualizujRealitaSouhrn(el, akce){
   if (!cil) return;
   const n = nabidkaSoucty(akce);
   const r = realitaSoucty(akce);
-  const rozdil = n.bez - r.nakup;
-  const proc = n.bez > 0 ? (rozdil / n.bez * 100) : 0;
+  const vp = vicePraceCelkem(akce);
+  const vydelekZaklad = n.bez - r.nakup;            // bez víceprací
+  const vydelekCelkem = n.bez + vp - r.nakup;       // s vícepracemi
+  const procZaklad = n.bez > 0 ? (vydelekZaklad / n.bez * 100) : 0;
+  const procCelkem = (n.bez + vp) > 0 ? (vydelekCelkem / (n.bez + vp) * 100) : 0;
   cil.innerHTML = `
     <div class="souhrn-radek"><span>Nabídka (bez DPH)</span><b>${U.kc(n.bez)}</b></div>
-    <div class="souhrn-radek"><span>Nakoupeno</span><b>${U.kc(r.nakup)}</b></div>
+    <div class="souhrn-radek"><span>Předpokládaný náklad (nakoupeno)</span><b>${U.kc(r.nakup)}</b></div>
     <div class="souhrn-radek"><span>Ze skladu (už zaplaceno)</span><span>${U.kc(r.zeSkladu)}</span></div>
-    <div class="souhrn-radek velky"><span>Rozdíl nabídka − nákupy</span>
-      <b class="${rozdil >= 0 ? 'plus' : 'minus'}">${rozdil >= 0 ? '+' : ''}${U.kc(rozdil)} (${proc.toFixed(1)} %)</b></div>`;
+    <div class="souhrn-radek"><span>Předpokládaný výdělek</span>
+      <b class="${vydelekZaklad >= 0 ? 'plus' : 'minus'}">${vydelekZaklad >= 0 ? '+' : ''}${U.kc(vydelekZaklad)} (${procZaklad.toFixed(1)} %)</b></div>
+    ${vp ? `
+    <div class="souhrn-radek" style="border-top:1px solid var(--linka);padding-top:8px;margin-top:4px">
+      <span>Vícepráce (nad rámec nabídky)</span><b>+ ${U.kc(vp)}</b></div>
+    <div class="souhrn-radek velky"><span>Výdělek vč. víceprací</span>
+      <b class="${vydelekCelkem >= 0 ? 'plus' : 'minus'}">${vydelekCelkem >= 0 ? '+' : ''}${U.kc(vydelekCelkem)} (${procCelkem.toFixed(1)} %)</b></div>` : ''}`;
 }
 
 function pridatNakupModal(akce){
