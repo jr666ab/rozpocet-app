@@ -35,7 +35,7 @@ function renderAkceDetail(el, akceId, tab){
 
   const taby = [
     ['nabidka', 'Nabídka'], ['realita', 'Útrata'], ['viceprace', 'Vícepráce'],
-    ['denik', 'Deník'], ['galerie', 'Galerie']
+    ['fakturace', 'Fakturace'], ['denik', 'Deník'], ['galerie', 'Galerie']
   ];
   el.innerHTML = `
     <div class="akce-hlava">
@@ -57,6 +57,7 @@ function renderAkceDetail(el, akceId, tab){
   const obsah = el.querySelector('#tabObsah');
   if (tab === 'realita') tabRealita(obsah, akce);
   else if (tab === 'viceprace') tabVicePrace(obsah, akce);
+  else if (tab === 'fakturace') tabFakturace(obsah, akce);
   else if (tab === 'denik') tabDenik(obsah, akce);
   else if (tab === 'galerie') tabGalerie(obsah, akce);
   else tabNabidka(obsah, akce);
@@ -233,11 +234,12 @@ function nabidkaPolozkaModal(akce, polozka){
   };
 }
 
-/* výběr z ceníku (materiál / práce) */
-function vyberZCeniku(akce){
+/* výběr z ceníku (materiál / práce).
+   onVyber(polozka, mnozstvi, cenaSPrirazkou) – kam se přidá; default do nabídky. */
+function vyberZCeniku(akce, onVyber, nadpis){
   let typ = 'polozky';
   const ov = U.modal(`
-    <h2>Přidat z ceníku</h2>
+    <h2>${nadpis || 'Přidat z ceníku'}</h2>
     <div class="taby" style="box-shadow:none;border:1px solid var(--linka)">
       <button class="tab aktivni" data-typ="polozky">Materiál</button>
       <button class="tab" data-typ="prace">Práce</button>
@@ -270,16 +272,22 @@ function vyberZCeniku(akce){
         <div class="pole"><label>Množství (${U.esc(x.jednotka || 'ks')})</label>
           <input id="fMn" type="text" inputmode="decimal" value="1"></div>
         <div class="radek-sub" style="margin-bottom:10px">Cena ${U.kc(cenaPrir)}/${U.esc(x.jednotka || 'ks')}${prir ? ` (vč. přirážky ${prir} %)` : ''}${x.trh ? `<br>📊 trh 2026: ${U.esc(x.trh)} Kč` : ''}</div>
-        <div class="modal-akce"><button class="btn btn-plny" id="fOk">Přidat do nabídky</button></div>`);
+        <div class="modal-akce"><button class="btn btn-plny" id="fOk">Přidat</button></div>`);
       const inp = ov2.querySelector('#fMn'); inp.focus(); inp.select();
       ov2.querySelector('#fOk').onclick = () => {
-        akce.nabidka.push({
-          id: U.uid(), zdroj: 'databaze', nazev: x.nazev,
-          mnozstvi: U.num(inp.value) || 1, jednotka: x.jednotka || 'ks',
-          jednotkovaCenaBezDph: cenaPrir, sazbaDph: U.num(x.sazbaDph ?? DB.dph())
-        });
-        DB.uloz(); U.zavriModal(ov2); U.zavriModal(ov);
-        U.toast('Přidáno do nabídky'); prekresliTab();
+        const mn = U.num(inp.value) || 1;
+        if (onVyber) {
+          onVyber(x, mn, cenaPrir);
+        } else {
+          akce.nabidka.push({
+            id: U.uid(), zdroj: 'databaze', nazev: x.nazev,
+            mnozstvi: mn, jednotka: x.jednotka || 'ks',
+            jednotkovaCenaBezDph: cenaPrir, sazbaDph: DB.dph()
+          });
+          DB.uloz(); U.toast('Přidáno do nabídky');
+        }
+        U.zavriModal(ov2); U.zavriModal(ov);
+        prekresliTab();
       };
     });
   }
@@ -298,7 +306,7 @@ function vlozVzorModal(akce){
     <h2>Vložit vzor</h2>
     <div class="modal-seznam" style="max-height:55vh;overflow-y:auto">
       ${DB.data.vzory.length ? DB.data.vzory.map(v => {
-        const celkem = (v.polozky || []).reduce((s, p) => s + U.num(p.mnozstvi) * U.num(p.jednotkovaCena), 0);
+        const celkem = (v.polozky || []).reduce((s, p) => s + U.num(p.mnozstvi) * DB.sPrirazkou(DB.cenaVzorPolozky(p)), 0);
         return `<div class="radek" data-id="${v.id}">
           <div class="radek-info">
             <div class="radek-nazev">${U.esc(v.nazev)}</div>
@@ -315,7 +323,7 @@ function vlozVzorModal(akce){
       akce.nabidka.push({
         id: U.uid(), zdroj: 'vzor', nazev: p.nazev,
         mnozstvi: U.num(p.mnozstvi) || 1, jednotka: p.jednotka || 'ks',
-        jednotkovaCenaBezDph: DB.sPrirazkou(p.jednotkovaCena), sazbaDph: U.num(p.sazbaDph ?? DB.dph())
+        jednotkovaCenaBezDph: DB.sPrirazkou(DB.cenaVzorPolozky(p)), sazbaDph: DB.dph()
       });
     }
     DB.uloz(); U.zavriModal(ov);
@@ -580,12 +588,15 @@ function zeSkladuModal(akce){
 function tabVicePrace(el, akce){
   const celkem = vicePraceCelkem(akce);
   el.innerHTML = `
-    <button class="btn btn-plny btn-velky" id="vPridat">+ Přidat vícepráci</button>
+    <div class="btn-rada">
+      <button class="btn btn-plny" id="vPridat">+ Ručně</button>
+      <button class="btn" id="vCenik">📚 Z ceníku</button>
+    </div>
     ${akce.vicePrace.length ? akce.vicePrace.map(v => `
       <div class="radek" data-id="${v.id}" style="cursor:pointer">
         <div class="radek-info">
           <div class="radek-nazev">${U.esc(v.nazev)}</div>
-          <div class="radek-sub">${U.fmtDatum(v.datum)}${v.popis ? ' · ' + U.esc(v.popis) : ''} · ${U.mn(v.mnozstvi)} × ${U.kc(v.cena)}</div>
+          <div class="radek-sub">${U.fmtDatum(v.datum)}${v.popis ? ' · ' + U.esc(v.popis) : ''} · ${U.mn(v.mnozstvi)} ${U.esc(v.jednotka || '')} × ${U.kc(v.cena)}</div>
         </div>
         <div class="radek-cena">${U.kc(U.num(v.mnozstvi) * U.num(v.cena))}</div>
       </div>`).join('') : '<div class="prazdno">Žádné vícepráce</div>'}
@@ -594,6 +605,14 @@ function tabVicePrace(el, akce){
     </div>`;
 
   el.querySelector('#vPridat').onclick = () => vicePraceModal(akce, null);
+  el.querySelector('#vCenik').onclick = () => vyberZCeniku(akce, (x, mn, cena) => {
+    akce.vicePrace.push({
+      id: U.uid(), nazev: x.nazev, popis: '',
+      mnozstvi: mn, jednotka: x.jednotka || 'ks', cena,
+      datum: U.dnes()
+    });
+    DB.uloz(); U.toast('Vícepráce přidána z ceníku');
+  }, 'Vícepráce z ceníku');
   el.querySelectorAll('.radek[data-id]').forEach(r =>
     r.onclick = () => vicePraceModal(akce, akce.vicePrace.find(v => v.id === r.dataset.id)));
 }
@@ -606,6 +625,7 @@ function vicePraceModal(akce, v){
     <div class="pole"><label>Popis</label><input id="fPopis" value="${U.esc(x.popis || '')}"></div>
     <div class="pole-rada">
       <div class="pole"><label>Množství</label><input id="fMn" type="text" inputmode="decimal" value="${x.mnozstvi ?? 1}"></div>
+      <div class="pole"><label>Jednotka</label><input id="fJednotka" value="${U.esc(x.jednotka || 'ks')}"></div>
       <div class="pole"><label>Cena/MJ</label><input id="fCena" type="text" inputmode="decimal" value="${x.cena ?? ''}"></div>
     </div>
     <div class="pole"><label>Datum</label><input id="fDatum" type="date" value="${x.datum || U.dnes()}"></div>
@@ -620,6 +640,7 @@ function vicePraceModal(akce, v){
     const data = {
       nazev, popis: ov.querySelector('#fPopis').value.trim(),
       mnozstvi: U.num(ov.querySelector('#fMn').value),
+      jednotka: ov.querySelector('#fJednotka').value.trim(),
       cena: U.num(ov.querySelector('#fCena').value),
       datum: ov.querySelector('#fDatum').value || U.dnes()
     };
@@ -630,6 +651,162 @@ function vicePraceModal(akce, v){
   const sm = ov.querySelector('#fSmazat');
   if (sm) sm.onclick = () => {
     akce.vicePrace = akce.vicePrace.filter(i => i.id !== v.id);
+    DB.uloz(); U.zavriModal(ov); prekresliTab();
+  };
+}
+
+/* ============================================================
+   ZÁLOŽKA: FAKTURACE
+   Celkem za dílo = nabídka bez DPH + vícepráce.
+   Zálohy i dílčí faktury se odečítají → zbývá doplatit (konečná).
+   ============================================================ */
+function fakturaSoucty(akce){
+  const zaklad = nabidkaSoucty(akce).bez;
+  const vp = vicePraceCelkem(akce);
+  const celkem = zaklad + vp;                 // bez DPH
+  const sazba = DB.dph();
+  const zalohy = akce.zalohy.reduce((s, z) => s + U.num(z.castka), 0);   // bez DPH
+  const dilci = akce.faktury.filter(f => f.typ !== 'konecna')
+    .reduce((s, f) => s + U.num(f.castka), 0);
+  const konecne = akce.faktury.filter(f => f.typ === 'konecna')
+    .reduce((s, f) => s + U.num(f.castka), 0);
+  const vyfakturovano = dilci + konecne;
+  const odecteno = zalohy + vyfakturovano;
+  const zbyva = celkem - odecteno;            // kolik ještě zbývá vyfakturovat/doplatit
+  return { zaklad, vp, celkem, sazba, zalohy, dilci, konecne, vyfakturovano, odecteno, zbyva,
+    celkemSDph: celkem * (1 + sazba / 100) };
+}
+
+function tabFakturace(el, akce){
+  const s = fakturaSoucty(akce);
+  const naklad = realitaSoucty(akce).nakup;
+
+  el.innerHTML = `
+    <div class="karta souhrn">
+      <div class="souhrn-radek"><span>Nabídka (bez DPH)</span><span>${U.kc(s.zaklad)}</span></div>
+      ${s.vp ? `<div class="souhrn-radek"><span>Vícepráce</span><span>+ ${U.kc(s.vp)}</span></div>` : ''}
+      <div class="souhrn-radek velky"><span>Celkem za dílo (bez DPH)</span><b>${U.kc(s.celkem)}</b></div>
+      <div class="souhrn-radek"><span>Celkem s DPH ${s.sazba} %</span><span>${U.kc(s.celkemSDph)}</span></div>
+    </div>
+
+    <div class="karta souhrn">
+      <div class="souhrn-radek"><span>Přijaté zálohy</span><span>− ${U.kc(s.zalohy)}</span></div>
+      <div class="souhrn-radek"><span>Vyfakturováno (dílčí + konečná)</span><span>− ${U.kc(s.vyfakturovano)}</span></div>
+      <div class="souhrn-radek velky"><span>Zbývá k fakturaci</span>
+        <b class="${s.zbyva > 0.5 ? 'minus' : 'plus'}">${U.kc(s.zbyva)}</b></div>
+      <div class="radek-sub" style="margin-top:6px">Propojeno: skutečně nakoupeno ${U.kc(naklad)} · vícepráce ${U.kc(s.vp)}</div>
+    </div>
+
+    <div class="sekce-nadpis">Přijaté zálohy</div>
+    <div id="fZalohy">${akce.zalohy.length ? akce.zalohy.map(z => `
+      <div class="radek" data-zaloha="${z.id}" style="cursor:pointer">
+        <div class="radek-info">
+          <div class="radek-nazev">Záloha ${U.kc(z.castka)}</div>
+          <div class="radek-sub">${U.fmtDatum(z.datum)}${z.popis ? ' · ' + U.esc(z.popis) : ''}</div>
+        </div>
+      </div>`).join('') : '<div class="prazdno">Žádná záloha</div>'}</div>
+    <button class="btn btn-velky" id="fPridatZaloha">+ Přidat zálohu</button>
+
+    <div class="sekce-nadpis">Faktury</div>
+    <div id="fFaktury">${akce.faktury.length ? akce.faktury
+      .slice().sort((a, b) => (a.datum || '').localeCompare(b.datum || '')).map(f => `
+      <div class="radek" data-faktura="${f.id}" style="cursor:pointer">
+        <div class="radek-info">
+          <div class="radek-nazev">${f.typ === 'konecna' ? 'Konečná faktura' : 'Dílčí faktura'}${f.cislo ? ' č. ' + U.esc(f.cislo) : ''}
+            <span class="stitek">${f.typ === 'konecna' ? 'konečná' : 'dílčí'}</span></div>
+          <div class="radek-sub">${U.fmtDatum(f.datum)}${f.popis ? ' · ' + U.esc(f.popis) : ''}</div>
+        </div>
+        <div class="radek-cena">${U.kc(f.castka)}<div class="radek-sub" style="font-weight:400">+ DPH</div></div>
+      </div>`).join('') : '<div class="prazdno">Žádná faktura</div>'}</div>
+    <div class="btn-rada">
+      <button class="btn btn-plny" id="fDilci">+ Dílčí faktura</button>
+      <button class="btn" id="fKonecna">+ Konečná faktura</button>
+    </div>`;
+
+  el.querySelector('#fPridatZaloha').onclick = () => zalohaModal(akce, null);
+  el.querySelectorAll('[data-zaloha]').forEach(r =>
+    r.onclick = () => zalohaModal(akce, akce.zalohy.find(z => z.id === r.dataset.zaloha)));
+  el.querySelector('#fDilci').onclick = () => fakturaModal(akce, null, 'dilci');
+  el.querySelector('#fKonecna').onclick = () => fakturaModal(akce, null, 'konecna');
+  el.querySelectorAll('[data-faktura]').forEach(r =>
+    r.onclick = () => fakturaModal(akce, akce.faktury.find(f => f.id === r.dataset.faktura)));
+}
+
+function zalohaModal(akce, z){
+  const x = z || {};
+  const ov = U.modal(`
+    <h2>${z ? 'Upravit zálohu' : 'Přijatá záloha'}</h2>
+    <div class="pole-rada">
+      <div class="pole"><label>Částka bez DPH</label><input id="fCastka" type="text" inputmode="decimal" value="${x.castka ?? ''}"></div>
+      <div class="pole"><label>Datum</label><input id="fDatum" type="date" value="${x.datum || U.dnes()}"></div>
+    </div>
+    <div class="pole"><label>Poznámka</label><input id="fPopis" value="${U.esc(x.popis || '')}" placeholder="např. záloha na materiál"></div>
+    <div class="modal-akce">
+      ${z ? '<button class="btn btn-cerveny" id="fSmazat">Smazat</button>' : ''}
+      <button class="btn btn-plny" id="fUlozit">Uložit</button>
+    </div>`);
+  ov.querySelector('#fUlozit').onclick = () => {
+    const data = {
+      castka: U.num(ov.querySelector('#fCastka').value),
+      datum: ov.querySelector('#fDatum').value || U.dnes(),
+      popis: ov.querySelector('#fPopis').value.trim()
+    };
+    if (data.castka <= 0) { U.toast('Zadej částku', 'chyba'); return; }
+    if (z) Object.assign(z, data);
+    else akce.zalohy.push({ id: U.uid(), ...data });
+    DB.uloz(); U.zavriModal(ov); prekresliTab();
+  };
+  const sm = ov.querySelector('#fSmazat');
+  if (sm) sm.onclick = () => {
+    akce.zalohy = akce.zalohy.filter(i => i.id !== z.id);
+    DB.uloz(); U.zavriModal(ov); prekresliTab();
+  };
+}
+
+function fakturaModal(akce, f, typ){
+  const x = f || {};
+  typ = f ? f.typ : typ;
+  const s = fakturaSoucty(akce);
+  // konečná faktura: předvyplnit tím, co zbývá dobrat
+  const predvyplneno = !f && typ === 'konecna' ? Math.max(0, s.zbyva) : (x.castka ?? '');
+  const ov = U.modal(`
+    <h2>${f ? 'Upravit fakturu' : (typ === 'konecna' ? 'Konečná faktura' : 'Dílčí faktura')}</h2>
+    ${typ === 'konecna' ? `<div class="radek-sub" style="margin-bottom:10px">Zbývá dobrat po odečtení záloh a dílčích faktur: <b>${U.kc(Math.max(0, s.zbyva))}</b></div>` : ''}
+    <div class="pole-rada">
+      <div class="pole"><label>Číslo faktury</label><input id="fCislo" value="${U.esc(x.cislo || '')}" placeholder="nepovinné"></div>
+      <div class="pole"><label>Datum</label><input id="fDatum" type="date" value="${x.datum || U.dnes()}"></div>
+    </div>
+    <div class="pole"><label>Fakturovaná částka bez DPH${typ === 'konecna' ? '' : ' (co se dosud udělalo)'}</label>
+      <input id="fCastka" type="text" inputmode="decimal" value="${predvyplneno}"></div>
+    <div class="pole"><label>Popis / co se fakturuje</label><input id="fPopis" value="${U.esc(x.popis || '')}"></div>
+    <div class="modal-akce">
+      ${f ? '<button class="btn btn-cerveny" id="fSmazat">Smazat</button>' : ''}
+      <button class="btn btn-obrys" id="fTisk">🖨 Tisk</button>
+      <button class="btn btn-plny" id="fUlozit">Uložit</button>
+    </div>`);
+
+  const seber = () => ({
+    cislo: ov.querySelector('#fCislo').value.trim(),
+    datum: ov.querySelector('#fDatum').value || U.dnes(),
+    castka: U.num(ov.querySelector('#fCastka').value),
+    popis: ov.querySelector('#fPopis').value.trim(),
+    typ
+  });
+  ov.querySelector('#fUlozit').onclick = () => {
+    const data = seber();
+    if (data.castka <= 0) { U.toast('Zadej částku', 'chyba'); return; }
+    if (f) Object.assign(f, data);
+    else akce.faktury.push({ id: U.uid(), ...data });
+    DB.uloz(); U.zavriModal(ov); prekresliTab();
+  };
+  ov.querySelector('#fTisk').onclick = () => {
+    const data = seber();
+    if (data.castka <= 0) { U.toast('Nejdřív zadej částku', 'chyba'); return; }
+    tiskniFakturu(akce, f ? { ...f, ...data } : { id: U.uid(), ...data });
+  };
+  const sm = ov.querySelector('#fSmazat');
+  if (sm) sm.onclick = () => {
+    akce.faktury = akce.faktury.filter(i => i.id !== f.id);
     DB.uloz(); U.zavriModal(ov); prekresliTab();
   };
 }

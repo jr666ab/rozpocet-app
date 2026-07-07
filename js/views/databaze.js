@@ -180,7 +180,7 @@ function dbVzory(el){
       <button class="btn" id="vzImport">⬆ Import ze souboru</button>
     </div>
     ${DB.data.vzory.length ? DB.data.vzory.map(v => {
-      const celkem = (v.polozky || []).reduce((s, p) => s + U.num(p.mnozstvi) * U.num(p.jednotkovaCena), 0);
+      const celkem = (v.polozky || []).reduce((s, p) => s + U.num(p.mnozstvi) * DB.cenaVzorPolozky(p), 0);
       return `<details class="vzor" data-id="${v.id}">
         <summary>
           <span style="flex:1">${U.esc(v.nazev)}</span>
@@ -195,16 +195,19 @@ function dbVzory(el){
             const sk = {};
             for (const p of pol) (sk[p.kategorie || ''] = sk[p.kategorie || ''] || []).push(p);
             const kl = Object.keys(sk);
-            const radekHtml = p => `
-              <div class="radek" data-pid="${p.id}" style="cursor:pointer">
+            const radekHtml = p => {
+              const cena = DB.cenaVzorPolozky(p);
+              const zCeniku = !(U.num(p.jednotkovaCena) > 0) && cena > 0;
+              return `<div class="radek" data-pid="${p.id}" style="cursor:pointer">
                 <div class="radek-info">
                   <div class="radek-nazev">${U.esc(p.nazev)}</div>
-                  <div class="radek-sub">${U.mn(p.mnozstvi)} ${U.esc(p.jednotka || '')} × ${U.kc(p.jednotkovaCena)}</div>
+                  <div class="radek-sub">${U.mn(p.mnozstvi)} ${U.esc(p.jednotka || '')} × ${U.kc(cena)}${zCeniku ? ' <span class="stitek">z ceníku</span>' : (cena === 0 ? ' <span class="stitek" style="background:#fdecec;color:var(--cervena)">bez ceny</span>' : '')}</div>
                 </div>
-                <div class="radek-cena">${U.kc(U.num(p.mnozstvi) * U.num(p.jednotkovaCena))}</div>
+                <div class="radek-cena">${U.kc(U.num(p.mnozstvi) * cena)}</div>
               </div>`;
+            };
             if (kl.length === 1 && kl[0] === '') return pol.map(radekHtml).join('');
-            return kl.map(k => `
+            return U.seradKategorie(kl.slice()).map(k => `
               ${k ? `<div class="sekce-nadpis">${U.esc(k)}</div>` : ''}
               ${sk[k].map(radekHtml).join('')}`).join('');
           })()}

@@ -24,6 +24,8 @@ window.DB = {
       a.realita   = Array.isArray(a.realita)   ? a.realita   : [];
       a.vicePrace = Array.isArray(a.vicePrace) ? a.vicePrace : [];
       a.denik     = Array.isArray(a.denik)     ? a.denik     : [];
+      a.zalohy    = Array.isArray(a.zalohy)    ? a.zalohy    : [];
+      a.faktury   = Array.isArray(a.faktury)   ? a.faktury   : [];
     }
   },
 
@@ -50,6 +52,26 @@ window.DB = {
   sPrirazkou(cena){
     const p = U.num(this.data.nastaveni.prirazka);
     return U.num(cena) * (1 + p / 100);
+  },
+
+  /* dohledá položku v ceníku podle názvu (materiál i práce dohromady).
+     Vrací { cena, jednotka } — cena je součet práce+materiál (montáž komplet). */
+  cenaZCeniku(nazev){
+    const k = String(nazev || '').toLowerCase().trim();
+    if (!k) return null;
+    let cena = 0, jednotka = '', nalezeno = false;
+    for (const kol of ['polozky', 'prace']) {
+      const it = this.data[kol].find(p => (p.nazev || '').toLowerCase().trim() === k);
+      if (it) { cena += U.num(it.cena); jednotka = jednotka || it.jednotka; nalezeno = true; }
+    }
+    return nalezeno ? { cena, jednotka: jednotka || 'ks' } : null;
+  },
+
+  /* efektivní cena položky vzoru: vlastní cena, jinak živě z ceníku */
+  cenaVzorPolozky(p){
+    if (U.num(p.jednotkovaCena) > 0) return U.num(p.jednotkovaCena);
+    const z = this.cenaZCeniku(p.nazev);
+    return z ? z.cena : 0;
   },
 
   /* načtení výchozího sloučeného ceníku (Stefan + Windisch) */
@@ -80,7 +102,7 @@ window.DB = {
     const a = {
       id: U.uid(), nazev, adresa: adresa || '',
       datumZalozeni: U.dnes(), status: 'nabidka',
-      nabidka: [], realita: [], vicePrace: [], denik: []
+      nabidka: [], realita: [], vicePrace: [], denik: [], zalohy: [], faktury: []
     };
     this.data.akce.unshift(a);
     this.uloz();

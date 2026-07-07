@@ -107,6 +107,84 @@ function otevriTisk(html){
   w.document.close();
 }
 
+/* ===== Tisk faktury (dílčí / konečná) ===== */
+function tiskniFakturu(akce, f){
+  const n = DB.data.nastaveni || {};
+  const sazba = DB.dph();
+  const dph = U.num(f.castka) * sazba / 100;
+  const sDph = U.num(f.castka) + dph;
+  const s = fakturaSoucty(akce);
+  const nadpis = f.typ === 'konecna' ? 'Konečná faktura' : 'Dílčí faktura';
+
+  const html = `<!DOCTYPE html><html lang="cs"><head><meta charset="utf-8">
+<title>${nadpis}${f.cislo ? ' č. ' + U.esc(f.cislo) : ''}</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#152523;padding:34px;font-size:13px}
+  h1{font-size:22px;color:#0b5d57;margin-bottom:2px}
+  .hlava{display:flex;justify-content:space-between;gap:20px;border-bottom:3px solid #0f766e;padding-bottom:14px;margin-bottom:18px}
+  .firma{text-align:right;font-size:12px;line-height:1.5}.firma b{font-size:14px}
+  .info{margin-bottom:16px;line-height:1.6}
+  table{width:100%;border-collapse:collapse;margin-bottom:14px}
+  th{background:#e6f2f0;color:#0b5d57;font-size:11.5px;text-transform:uppercase}
+  th,td{border:1px solid #cfe0dd;padding:7px 9px;text-align:left}
+  .r{text-align:right;white-space:nowrap}
+  .soucty{width:auto;margin-left:auto;min-width:280px}
+  .soucty td{border:none;padding:4px 8px;font-size:13.5px}
+  .soucty tr.celkem td{border-top:2px solid #0f766e;font-weight:700;font-size:16px;padding-top:8px}
+  .rekap{margin-top:20px;font-size:12px;background:#f0f4f3;border-radius:8px;padding:12px 14px}
+  .rekap div{display:flex;justify-content:space-between;padding:2px 0}
+  .pata{margin-top:26px;font-size:11.5px;color:#6b7c78}
+  @media print{ body{padding:10mm} }
+</style></head><body>
+  <div class="hlava">
+    <div>
+      <h1>${nadpis}</h1>
+      <div class="info">
+        ${f.cislo ? 'Číslo: <b>' + U.esc(f.cislo) + '</b><br>' : ''}
+        Zakázka: <b>${U.esc(akce.nazev)}</b><br>
+        ${akce.adresa ? U.esc(akce.adresa) + '<br>' : ''}
+        Datum vystavení: ${U.fmtDatum(f.datum)}
+      </div>
+    </div>
+    <div class="firma">
+      ${n.firma ? `<b>${U.esc(n.firma)}</b><br>` : ''}
+      ${n.adresa ? U.esc(n.adresa) + '<br>' : ''}
+      ${n.ico ? 'IČO: ' + U.esc(n.ico) + '<br>' : ''}
+      ${n.dic ? 'DIČ: ' + U.esc(n.dic) + '<br>' : ''}
+      ${n.telefon ? 'Tel: ' + U.esc(n.telefon) + '<br>' : ''}
+      ${n.email ? U.esc(n.email) : ''}
+    </div>
+  </div>
+
+  <table>
+    <thead><tr><th>Popis plnění</th><th class="r">Částka bez DPH</th></tr></thead>
+    <tbody>
+      <tr><td>${U.esc(f.popis || (f.typ === 'konecna' ? 'Konečné vyúčtování díla' : 'Provedené práce a dodávky'))}</td>
+        <td class="r">${U.kc(f.castka)}</td></tr>
+    </tbody>
+  </table>
+
+  <table class="soucty">
+    <tr><td>Základ bez DPH</td><td class="r">${U.kc(f.castka)}</td></tr>
+    <tr><td>DPH ${sazba} %</td><td class="r">${U.kc(dph)}</td></tr>
+    <tr class="celkem"><td>K úhradě</td><td class="r">${U.kc(sDph)}</td></tr>
+  </table>
+
+  <div class="rekap">
+    <div><span>Celkem za dílo (bez DPH)</span><b>${U.kc(s.celkem)}</b></div>
+    <div><span>Přijaté zálohy</span><span>− ${U.kc(s.zalohy)}</span></div>
+    <div><span>Dříve fakturováno</span><span>− ${U.kc(s.vyfakturovano)}</span></div>
+    <div><span>Zbývá k fakturaci (bez DPH)</span><b>${U.kc(s.zbyva)}</b></div>
+  </div>
+
+  <div class="pata">Faktura vystavena v aplikaci Rozpočty staveb.</div>
+  <script>window.onload = () => setTimeout(() => window.print(), 300);<\/script>
+</body></html>`;
+
+  otevriTisk(html);
+}
+
 /* ===== Tisk ceníku (materiál nebo práce), seskupeno do okruhů ===== */
 function tiskniCenik(kolekce){
   const n = DB.data.nastaveni || {};
